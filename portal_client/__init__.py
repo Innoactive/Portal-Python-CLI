@@ -6,7 +6,7 @@ from .client_application_uploader import (
 )
 
 ## create the top-level parser
-parser = argparse.ArgumentParser(prog="portal")
+parser = argparse.ArgumentParser(prog="innoactive-portal")
 subparsers = parser.add_subparsers(help="Help on specific commands")
 
 # create the parser for the "a" command
