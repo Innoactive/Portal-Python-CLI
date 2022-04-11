@@ -11,7 +11,9 @@ import json
 import backoff
 from urllib.parse import urljoin
 
-from portal_chunked_upload import ChunkedUploader
+from portal_client.utils import get_authorization_header
+
+from .portal_chunked_upload import ChunkedUploader
 from base64 import b64encode
 
 logging.getLogger("backoff").addHandler(logging.StreamHandler())
@@ -22,10 +24,8 @@ class ApplicationUploader:
     Class dealing with the upload of an application.
     """
 
-    def __init__(self, base_url, username, password) -> None:
+    def __init__(self, base_url) -> None:
         self.base_url = base_url
-        self.username = username
-        self.password = password
 
     @backoff.on_exception(
         backoff.expo, requests.exceptions.ConnectionError, max_time=60
@@ -41,11 +41,7 @@ class ApplicationUploader:
 
         application_url = urljoin(self.base_url, "/api/applications/")
 
-        authorization_header = "Basic {}".format(
-            b64encode(bytes(f"{self.username}:{self.password}", "utf-8")).decode(
-                "ascii"
-            )
-        )
+        authorization_header = get_authorization_header()
 
         # upload chunked application
         uploader = ChunkedUploader(
@@ -72,8 +68,7 @@ class ApplicationUploader:
         )
 
 
-def _get_parsed_arguments():
-    parser = argparse.ArgumentParser()
+def configure_parser(parser):
     parser.add_argument("-z", "--application-zip", help="path to the application zip")
 
     # single app config values:
@@ -113,10 +108,8 @@ def _get_parsed_arguments():
     parser.add_argument(
         "--base-url", help="URL to the Portal Backend instance", required=True
     )
-    parser.add_argument("--username", help="Portal Backend username.", required=True)
-    parser.add_argument("--password", help="Portal Backend password.", required=True)
-
-    return parser.parse_args()
+    parser.set_defaults(func=main)
+    return parser
 
 
 def _validate_application_zip(application_zip):
@@ -133,70 +126,74 @@ def _validate_application_zip(application_zip):
         sys.exit(1)
 
 
-args = _get_parsed_arguments()
-application_zip = args.application_zip
-_validate_application_zip(application_zip)
+def main(args):
+    application_zip = args.application_zip
+    _validate_application_zip(application_zip)
 
-config_parameters = {}
+    config_parameters = {}
 
-# replace application config with passed args
-if not args.application_name is None:
-    config_parameters["name"] = args.application_name
+    # replace application config with passed args
+    if not args.application_name is None:
+        config_parameters["name"] = args.application_name
 
-if not args.application_description is None:
-    config_parameters["description_html"] = args.application_description
+    if not args.application_description is None:
+        config_parameters["description_html"] = args.application_description
 
-if not args.application_version is None:
-    config_parameters["version"] = args.application_version
+    if not args.application_version is None:
+        config_parameters["version"] = args.application_version
 
-if not args.application_identity is None:
-    config_parameters["identity"] = args.application_identity
+    if not args.application_identity is None:
+        config_parameters["identity"] = args.application_identity
 
-if not args.current_version is None:
-    config_parameters["current_version"] = args.current_version
+    if not args.current_version is None:
+        config_parameters["current_version"] = args.current_version
 
-if not args.application_type is None:
-    config_parameters["application_type"] = args.application_type
+    if not args.application_type is None:
+        config_parameters["application_type"] = args.application_type
 
-if not args.application_tags is None:
-    config_parameters["tags"] = json.dumps(args.application_tags.split(","))
+    if not args.application_tags is None:
+        config_parameters["tags"] = json.dumps(args.application_tags.split(","))
 
-if not args.target_platform is None:
-    config_parameters["target_platform"] = args.target_platform
+    if not args.target_platform is None:
+        config_parameters["target_platform"] = args.target_platform
 
-if not args.package_name is None:
-    config_parameters["package_name"] = args.package_name
+    if not args.package_name is None:
+        config_parameters["package_name"] = args.package_name
 
-if not args.executable_path is None:
-    config_parameters["executable_path"] = args.executable_path
+    if not args.executable_path is None:
+        config_parameters["executable_path"] = args.executable_path
 
-if not args.panoramic_preview_image is None:
-    config_parameters["panoramic_preview_image"] = args.panoramic_preview_image
+    if not args.panoramic_preview_image is None:
+        config_parameters["panoramic_preview_image"] = args.panoramic_preview_image
 
-# Validate application config
-if config_parameters.get("name") is None:
-    print("Application name not provided. Cannot continue.")
-    sys.exit(1)
+    # Validate application config
+    if config_parameters.get("name") is None:
+        print("Application name not provided. Cannot continue.")
+        sys.exit(1)
 
-if (
-    config_parameters.get("executable_path") is None
-    and args.target_platform == "windows"
-):
-    print("'executable_path' name not provided. Cannot continue.")
-    sys.exit(1)
+    if (
+        config_parameters.get("executable_path") is None
+        and args.target_platform == "windows"
+    ):
+        print("'executable_path' name not provided. Cannot continue.")
+        sys.exit(1)
 
-if config_parameters.get("version") is None:
-    print("'version' name not provided. Cannot continue.")
-    sys.exit(1)
+    if config_parameters.get("version") is None:
+        print("'version' name not provided. Cannot continue.")
+        sys.exit(1)
+
+    # Upload application
+    uploader = ApplicationUploader(
+        base_url=args.base_url, username=args.username, password=args.password
+    )
+    response = uploader.upload_application(application_zip, config_parameters)
+
+    print("Finished upload with status: {}".format(response.status_code))
+    if not response.ok:
+        print(response.text)
+        exit(1)
 
 
-# Upload application
-uploader = ApplicationUploader(
-    base_url=args.base_url, username=args.username, password=args.password
-)
-response = uploader.upload_application(application_zip, config_parameters)
-
-print("Finished upload with status: {}".format(response.status_code))
-if not response.ok:
-    print(response.text)
-    exit(1)
+if __name__ == "__main__":
+    args = configure_parser(parser=argparse.ArgumentParser()).parse_args()
+    args.func(args)

@@ -9,7 +9,9 @@ from urllib.parse import urljoin
 import requests
 import backoff
 
-from portal_chunked_upload import ChunkedUploader
+from portal_client.utils import get_authorization_header
+
+from .portal_chunked_upload import ChunkedUploader
 from base64 import b64encode
 
 
@@ -21,25 +23,16 @@ class ClientApplicationApiClient:
     Class dealing with the client-applications API on the Portal Backend
     """
 
-    def __init__(self, base_backend_url, username, password) -> None:
+    def __init__(self, base_backend_url) -> None:
         self.base_url = urljoin(base_backend_url, "/api/client-applications/")
-        self.username = username
-        self.password = password
 
     def upload_version_binary(self, binary_path):
         # upload binary in chunks
         uploader = ChunkedUploader(
             base_url=self.base_url,
-            authorization_header=self.get_authorization_header(),
+            authorization_header=get_authorization_header(),
         )
         return uploader.upload_chunked_file(file_path=binary_path)
-
-    def get_authorization_header(self):
-        return "Basic {}".format(
-            b64encode(bytes(f"{self.username}:{self.password}", "utf-8")).decode(
-                "ascii"
-            )
-        )
 
     @backoff.on_exception(
         backoff.expo, requests.exceptions.ConnectionError, max_time=60
@@ -48,7 +41,7 @@ class ClientApplicationApiClient:
         return requests.post(
             urljoin(self.base_url, f"{slug}/versions/"),
             data=version_data,
-            headers={"Authorization": self.get_authorization_header()},
+            headers={"Authorization": get_authorization_header()},
         )
 
     @backoff.on_exception(
@@ -68,10 +61,8 @@ class ClientApplicationApiClient:
         )
 
 
-if __name__ == "__main__":
-    # Execute when the module is not initialized from an import statement.
-    # Define CLI args
-    parser = argparse.ArgumentParser()
+# Define CLI args
+def configure_parser(parser):
     parser.add_argument(
         "--slug",
         required=True,
@@ -104,23 +95,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--base-url", required=True, help="URL to the Portal Backend instance "
     )
-    parser.add_argument(
-        "--username",
-        help="Portal Backend username. Defaults to value of environment variable PORTAL_BACKEND_USERNAME.",
-        default=os.getenv("PORTAL_BACKEND_USERNAME"),
-    )
-    parser.add_argument(
-        "--password",
-        help="Portal Backend password. Defaults to value of environment variable PORTAL_BACKEND_PASSWORD",
-        default=os.getenv("PORTAL_BACKEND_PASSWORD"),
-    )
+    parser.set_defaults(func=main)
+    return parser
 
-    args = parser.parse_args()
 
+def main(args):
     # Upload application
-    client_applications_api = ClientApplicationApiClient(
-        base_backend_url=args.base_url, username=args.username, password=args.password
-    )
+    client_applications_api = ClientApplicationApiClient(base_backend_url=args.base_url)
 
     # Ensure the desired version doesn't exist yet
     check_response = client_applications_api.retrieve_client_application_version(
@@ -152,3 +133,9 @@ if __name__ == "__main__":
     if not response.ok:
         print(response.text)
         exit(1)
+
+
+if __name__ == "__main__":
+    # Execute when the module is not initialized from an import statement.
+    args = configure_parser(parser=argparse.ArgumentParser()).parse_args()
+    args.func(args)
