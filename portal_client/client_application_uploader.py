@@ -57,7 +57,7 @@ class ClientApplicationApiClient:
         return requests.patch(
             urljoin(self.base_url, f"{slug}/"),
             data={"current_version": version},
-            headers={"Authorization": self.get_authorization_header()},
+            headers={"Authorization": get_authorization_header()},
         )
 
 
