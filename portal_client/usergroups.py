@@ -9,7 +9,7 @@ from portal_client.utils import get_authorization_header
 
 
 def list_users(args):
-    users_url = urljoin(PORTAL_BACKEND_ENDPOINT, "/api/users/")
+    users_url = urljoin(PORTAL_BACKEND_ENDPOINT, "/api/groups/")
     response = requests.get(
         users_url,
         headers={"Authorization": get_authorization_header()},
@@ -25,18 +25,20 @@ def list_users(args):
     print(response.text)
 
 
-def configure_users_parser(parser: ArgumentParser):
-    users_parser = parser.add_subparsers(
-        description="List and manage user accounts on Portal"
+def configure_user_groups_parser(parser: ArgumentParser):
+    usergroup_parser = parser.add_subparsers(
+        description="List and manage user groups on Portal"
     )
 
-    users_list_parser = users_parser.add_parser(
+    usergroup_list_parser = usergroup_parser.add_parser(
         "list",
-        help="Returns a paginated list of users on Portal",
+        help="Returns a paginated list of user groups on Portal",
         parents=[pagination_parser],
     )
 
-    filters_group = users_list_parser.add_argument_group("filters", "Filtering Users")
+    filters_group = usergroup_list_parser.add_argument_group(
+        "filters", "Filtering Users"
+    )
     filters_group.add_argument(
         "--user-groups",
         metavar="GROUP_ID",
@@ -52,7 +54,7 @@ def configure_users_parser(parser: ArgumentParser):
     )
     filters_group.add_argument(
         "--search",
-        help="A search term (e.g. email address, user name) to filter results by",
+        help="A search term (e.g. group name) to filter results by",
     )
 
-    users_list_parser.set_defaults(func=list_users)
+    usergroup_list_parser.set_defaults(func=list_users)

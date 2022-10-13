@@ -6,6 +6,7 @@ from portal_client.application_uploader import (
 from portal_client.client_application_uploader import (
     configure_parser as configure_client_application_parser,
 )
+from portal_client.usergroups import configure_user_groups_parser
 from portal_client.users import configure_users_parser
 
 ## create the top-level parser
@@ -24,3 +25,6 @@ configure_client_application_parser(client_application_parser)
 
 users_parser = subparsers.add_parser("users", help="Manage user accounts on Portal")
 configure_users_parser(users_parser)
+
+usergroups_parser = subparsers.add_parser("groups", help="Manage user groups on Portal")
+configure_user_groups_parser(usergroups_parser)
