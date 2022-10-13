@@ -15,7 +15,11 @@ jobs:
       - name: Install dependecies
         uses: VaultVulp/action-pipenv@v2.0.1
         with:
-          command: sync # Install all dependencies
+          command: sync --dev
+      - name: Update setup.py's dependencies
+        uses: VaultVulp/action-pipenv@v2.0.1
+        with:
+          command: run pipenv-setup sync --pipfile
       - name: Semantic Release
         uses: cycjimmy/semantic-release-action@v3
         with:
