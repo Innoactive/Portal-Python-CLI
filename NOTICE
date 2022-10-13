@@ -1,0 +1,12 @@
+Innoactive Portal Command Line Client
+Copyright 2013-2022 Innoactive GmbH
+
+This product includes software developed at Innoactive GmbH (http://innoactive.de), licensed under the Apache License, Version 2.0.
+
+This product contains software https://github.com/psf/requests developed by Kenneth Reitz & Contributors. licensed under the Apache Software License (Apache 2.0).
+
+This product contains software https://github.com/litl/backoff developed by Bob Green & Contributors, licensed under the MIT License (MIT).
+
+The following is courtesy of our legal counsel:
+
+It is your responsibility to ensure that your use and/or transfer does not violate applicable laws.
