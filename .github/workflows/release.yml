@@ -16,11 +16,11 @@ jobs:
         uses: VaultVulp/action-pipenv@v2.0.1
         with:
           command: sync # Install all dependencies
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 16
-      - run: npm i -g @semantic-release/exec @semantic-release/git
       - name: Semantic Release
         uses: cycjimmy/semantic-release-action@v3
+        with:
+          extra_plugins: |
+            @semantic-release/exec
+            @semantic-release/git
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
