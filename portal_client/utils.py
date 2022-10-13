@@ -1,19 +1,19 @@
-import os
 from base64 import b64encode
+from os import getenv
 
 
 def get_authorization_header():
-    if os.getenv("PORTAL_BACKEND_ACCESS_TOKEN"):
-        return "Bearer %s" % os.getenv("PORTAL_BACKEND_ACCESS_TOKEN")
+    if getenv("PORTAL_BACKEND_ACCESS_TOKEN"):
+        return "Bearer %s" % getenv("PORTAL_BACKEND_ACCESS_TOKEN")
 
-    if os.getenv("PORTAL_BACKEND_USERNAME") and os.getenv("PORTAL_BACKEND_PASSWORD"):
+    if getenv("PORTAL_BACKEND_USERNAME") and getenv("PORTAL_BACKEND_PASSWORD"):
         return "Basic {}".format(
             b64encode(
                 bytes(
                     "%s:%s"
                     % (
-                        os.getenv("PORTAL_BACKEND_USERNAME"),
-                        os.getenv("PORTAL_BACKEND_PASSWORD"),
+                        getenv("PORTAL_BACKEND_USERNAME"),
+                        getenv("PORTAL_BACKEND_PASSWORD"),
                     ),
                     "utf-8",
                 )

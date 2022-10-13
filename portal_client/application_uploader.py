@@ -10,6 +10,7 @@ from urllib.parse import urljoin
 import backoff
 import requests
 
+from portal_client.defaults import PORTAL_BACKEND_ENDPOINT
 from portal_client.portal_chunked_upload import ChunkedUploader
 from portal_client.utils import get_authorization_header
 
@@ -119,10 +120,6 @@ def configure_parser(parser):
 
     # single uploader config values:
     parser.add_argument(
-        "--base-url", help="URL to the Portal Backend instance.", required=True
-    )
-    # single uploader config values:
-    parser.add_argument(
         "--organization-ids",
         nargs="+",
         type=str,
@@ -157,7 +154,7 @@ def main(args):
     config_parameters = vars(args)
 
     # Upload application
-    uploader = ApplicationUploader(base_url=args.base_url)
+    uploader = ApplicationUploader(base_url=PORTAL_BACKEND_ENDPOINT)
     response = uploader.upload_application(application_archive, config_parameters)
 
     print(response.text)

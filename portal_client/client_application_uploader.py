@@ -8,6 +8,7 @@ from urllib.parse import urljoin
 import backoff
 import requests
 
+from portal_client.defaults import PORTAL_BACKEND_ENDPOINT
 from portal_client.portal_chunked_upload import ChunkedUploader
 from portal_client.utils import get_authorization_header
 
@@ -19,8 +20,8 @@ class ClientApplicationApiClient:
     Class dealing with the client-applications API on the Portal Backend
     """
 
-    def __init__(self, base_backend_url) -> None:
-        self.base_url = urljoin(base_backend_url, "/api/client-applications/")
+    def __init__(self, base_url) -> None:
+        self.base_url = urljoin(base_url, "/api/client-applications/")
 
     def upload_version_binary(self, binary_path):
         # upload binary in chunks
@@ -88,16 +89,15 @@ def configure_parser(parser):
         default=False,
         action="store_true",
     )
-    parser.add_argument(
-        "--base-url", required=True, help="URL to the Portal Backend instance "
-    )
     parser.set_defaults(func=main)
     return parser
 
 
 def main(args):
     # Upload application
-    client_applications_api = ClientApplicationApiClient(base_backend_url=args.base_url)
+    client_applications_api = ClientApplicationApiClient(
+        base_url=PORTAL_BACKEND_ENDPOINT
+    )
 
     # Ensure the desired version doesn't exist yet
     check_response = client_applications_api.retrieve_client_application_version(
