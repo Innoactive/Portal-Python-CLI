@@ -7,14 +7,12 @@ import requests
 import os
 import argparse
 import sys
-import json
 import backoff
 from urllib.parse import urljoin
 
 from portal_client.utils import get_authorization_header
 
 from .portal_chunked_upload import ChunkedUploader
-from base64 import b64encode
 
 logging.getLogger("backoff").addHandler(logging.StreamHandler())
 
@@ -69,23 +67,27 @@ class ApplicationUploader:
 
 
 def configure_parser(parser):
-    parser.add_argument("-z", "--application-zip", help="path to the application zip")
+    parser.add_argument("application-archive", help="path to the application archive")
 
     # single app config values:
+    parser.add_argument("--name", help="How the application will be named on Portal.")
+    parser.add_argument("--description", help="Short application description. ")
     parser.add_argument(
-        "--application-name", help="How the application will be named on the Hub. "
+        "--version", help="Semantic application version.", required=True
     )
     parser.add_argument(
-        "--application-description", help="Short application description. "
-    )
-    parser.add_argument("--application-version", help="Semantic application version. ")
-    parser.add_argument(
-        "--application-type",
+        "--type",
         help="Application type",
         default="other",
         choices=["unity", "unreal", "other"],
+        required=True,
     )
-    parser.add_argument("--application-tags", help="Tags [string].")
+    parser.add_argument(
+        "--tags",
+        help="List of tags to assign to the application.",
+        nargs="+",
+        type=str,
+    )
     parser.add_argument("--application-identity", help="Identity name.")
 
     parser.add_argument(
@@ -93,6 +95,7 @@ def configure_parser(parser):
         help="Target platform. ",
         default="windows",
         choices=["windows", "android"],
+        required=True,
     )
     parser.add_argument(
         "--current-version",
@@ -108,27 +111,37 @@ def configure_parser(parser):
     parser.add_argument(
         "--base-url", help="URL to the Portal Backend instance", required=True
     )
+    # single uploader config values:
+    parser.add_argument(
+        "--organization-ids",
+        nargs="+",
+        type=str,
+        help="ID(s) of any organization the app should be available in.",
+        required=True,
+    )
     parser.set_defaults(func=main)
     return parser
 
 
-def _validate_application_zip(application_zip):
-    if application_zip is None:
-        print("No valid application zip path specified via '-z'. Cannot continue.")
+def _validate_application_archive(application_archive):
+    if application_archive is None:
+        print("No valid application archive path specified. Cannot continue.")
         sys.exit(1)
 
-    if not application_zip.endswith(".zip") and not application_zip.endswith(".apk"):
+    if not application_archive.endswith(".zip") and not application_archive.endswith(
+        ".apk"
+    ):
         print("application-path does not lead to a .zip or apk file. Cannot continue.")
         sys.exit(1)
 
-    if not os.path.isfile(application_zip):
-        print("no file found under {}. Cannot continue.".format(application_zip))
+    if not os.path.isfile(application_archive):
+        print("no file found under {}. Cannot continue.".format(application_archive))
         sys.exit(1)
 
 
 def main(args):
-    application_zip = args.application_zip
-    _validate_application_zip(application_zip)
+    application_archive = args.application_archive
+    _validate_application_archive(application_archive)
 
     config_parameters = {}
 
@@ -151,8 +164,8 @@ def main(args):
     if not args.application_type is None:
         config_parameters["application_type"] = args.application_type
 
-    if not args.application_tags is None:
-        config_parameters["tags"] = json.dumps(args.application_tags.split(","))
+    if not args.tags is None:
+        config_parameters["tags"] = args.tags
 
     if not args.target_platform is None:
         config_parameters["target_platform"] = args.target_platform
@@ -186,7 +199,7 @@ def main(args):
     uploader = ApplicationUploader(
         base_url=args.base_url, username=args.username, password=args.password
     )
-    response = uploader.upload_application(application_zip, config_parameters)
+    response = uploader.upload_application(application_archive, config_parameters)
 
     print("Finished upload with status: {}".format(response.status_code))
     if not response.ok:
