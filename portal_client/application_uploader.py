@@ -30,7 +30,7 @@ class ApplicationUploader:
     )
     def publish_application_data(self, url, authorization_header, app_data):
         response = requests.post(
-            url, data=app_data, headers={"Authorization": authorization_header}
+            url, json=app_data, headers={"Authorization": authorization_header}
         )
 
         return response
@@ -60,14 +60,20 @@ class ApplicationUploader:
             )
             config_parameters["panoramic_preview_image"] = panoramic_image_url
 
+        # rewrite organization ids
+        config_parameters["organizations"] = config_parameters.get(
+            "organization_ids", []
+        )
+        del config_parameters["organization_ids"]
+
+        # rewrite tags to be a comma separated list
+        # config_parameters["tags"] = ",".join(config_parameters.get("tags", []))
+
         # publish the application
         return self.publish_application_data(
             application_url,
             authorization_header,
-            {
-                **config_parameters,
-                "organizations": config_parameters.get("organization_ids", []),
-            },
+            config_parameters,
         )
 
 
@@ -75,7 +81,9 @@ def configure_parser(parser):
     parser.add_argument(
         "application_archive", help="Path to the application archive to be uploaded."
     )
-    parser.add_argument("version", help="Semantic application version.")
+    parser.add_argument(
+        "--version", help="Semantic application version.", required=True
+    )
 
     # single app config values:
     parser.add_argument(
@@ -87,7 +95,6 @@ def configure_parser(parser):
         help="Application type",
         default="other",
         choices=["unity", "unreal", "other"],
-        required=True,
     )
     parser.add_argument(
         "--tags",
@@ -105,7 +112,6 @@ def configure_parser(parser):
         help="Target platform. ",
         default="windows",
         choices=["windows", "android"],
-        required=True,
     )
     parser.add_argument(
         "--current-version",
@@ -152,6 +158,7 @@ def main(args):
     _validate_application_archive(application_archive)
 
     config_parameters = vars(args)
+    del config_parameters["func"]
 
     # Upload application
     uploader = ApplicationUploader(base_url=PORTAL_BACKEND_ENDPOINT)
