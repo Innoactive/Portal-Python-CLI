@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="portal_client",
-    version="0.2",
+    version="1.0.0",
     description="Client to interact with Portal's API for application management",
     url="https://github.com/Innoactive/Portal-Backend-Python-Client",
     author="Benedikt Reiser",
