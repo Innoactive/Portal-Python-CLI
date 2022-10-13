@@ -1,9 +1,10 @@
 import hashlib
-import requests
-from urllib.parse import urljoin
 from io import BytesIO
 from os import path
+from urllib.parse import urljoin
+
 import backoff
+import requests
 
 
 def _generate_md5_hash_for_file_at_path(file_path):

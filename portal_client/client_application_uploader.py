@@ -1,19 +1,15 @@
 #!/usr/bin/env python
 # Uploads a client application based on provided CLI args
 
-import logging
-import os
-import os
 import argparse
+import logging
 from urllib.parse import urljoin
-import requests
+
 import backoff
+import requests
 
+from portal_client.portal_chunked_upload import ChunkedUploader
 from portal_client.utils import get_authorization_header
-
-from .portal_chunked_upload import ChunkedUploader
-from base64 import b64encode
-
 
 logging.getLogger("backoff").addHandler(logging.StreamHandler())
 

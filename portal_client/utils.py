@@ -1,5 +1,5 @@
-from base64 import b64encode
 import os
+from base64 import b64encode
 
 
 def get_authorization_header():

@@ -1,18 +1,17 @@
 #!/usr/bin/env python
 # Uploads an application based on provided config files.
 
+import argparse
 import logging
 import os
-import requests
-import os
-import argparse
 import sys
-import backoff
 from urllib.parse import urljoin
 
-from portal_client.utils import get_authorization_header
+import backoff
+import requests
 
-from .portal_chunked_upload import ChunkedUploader
+from portal_client.portal_chunked_upload import ChunkedUploader
+from portal_client.utils import get_authorization_header
 
 logging.getLogger("backoff").addHandler(logging.StreamHandler())
 
