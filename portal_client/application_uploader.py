@@ -1,20 +1,18 @@
 #!/usr/bin/env python
 # Uploads an application based on provided config files.
 
+import argparse
 import logging
 import os
-import requests
-import os
-import argparse
 import sys
-import json
-import backoff
 from urllib.parse import urljoin
 
-from portal_client.utils import get_authorization_header
+import backoff
+import requests
 
-from .portal_chunked_upload import ChunkedUploader
-from base64 import b64encode
+from portal_client.defaults import PORTAL_BACKEND_ENDPOINT
+from portal_client.portal_chunked_upload import ChunkedUploader
+from portal_client.utils import get_authorization_header
 
 logging.getLogger("backoff").addHandler(logging.StreamHandler())
 
@@ -32,7 +30,7 @@ class ApplicationUploader:
     )
     def publish_application_data(self, url, authorization_header, app_data):
         response = requests.post(
-            url, data=app_data, headers={"Authorization": authorization_header}
+            url, json=app_data, headers={"Authorization": authorization_header}
         )
 
         return response
@@ -62,31 +60,52 @@ class ApplicationUploader:
             )
             config_parameters["panoramic_preview_image"] = panoramic_image_url
 
+        # rewrite organization ids
+        config_parameters["organizations"] = config_parameters.get(
+            "organization_ids", []
+        )
+        del config_parameters["organization_ids"]
+
+        # rewrite tags to be a comma separated list
+        # config_parameters["tags"] = ",".join(config_parameters.get("tags", []))
+
         # publish the application
         return self.publish_application_data(
-            application_url, authorization_header, config_parameters
+            application_url,
+            authorization_header,
+            config_parameters,
         )
 
 
 def configure_parser(parser):
-    parser.add_argument("-z", "--application-zip", help="path to the application zip")
+    parser.add_argument(
+        "application_archive", help="Path to the application archive to be uploaded."
+    )
+    parser.add_argument(
+        "--version", help="Semantic application version.", required=True
+    )
 
     # single app config values:
     parser.add_argument(
-        "--application-name", help="How the application will be named on the Hub. "
+        "--name", help="How the application will be named on Portal.", required=True
     )
+    parser.add_argument("--description", help="Short application description. ")
     parser.add_argument(
-        "--application-description", help="Short application description. "
-    )
-    parser.add_argument("--application-version", help="Semantic application version. ")
-    parser.add_argument(
-        "--application-type",
+        "--type",
         help="Application type",
         default="other",
         choices=["unity", "unreal", "other"],
     )
-    parser.add_argument("--application-tags", help="Tags [string].")
-    parser.add_argument("--application-identity", help="Identity name.")
+    parser.add_argument(
+        "--tags",
+        help="List of tags to assign to the application.",
+        nargs="+",
+        type=str,
+    )
+    parser.add_argument(
+        "--identity",
+        help='Identity of the application. Do not confuse this with the id of the application version, this is the original "id of the application". Each version will have the same identity, but a different id',
+    )
 
     parser.add_argument(
         "--target-platform",
@@ -96,7 +115,8 @@ def configure_parser(parser):
     )
     parser.add_argument(
         "--current-version",
-        help="Bool indicating if this version is the current version.",
+        help="Make this application version the current one. It will be rolled out to all clients. If no (application) identity is provided, this will be set to true automatically.",
+        action="store_true",
     )
     parser.add_argument(
         "--executable-path", help="Path to the applications executable."
@@ -106,91 +126,46 @@ def configure_parser(parser):
 
     # single uploader config values:
     parser.add_argument(
-        "--base-url", help="URL to the Portal Backend instance", required=True
+        "--organization-ids",
+        nargs="+",
+        type=str,
+        help="ID(s) of any organization the app should be available in.",
+        required=True,
     )
     parser.set_defaults(func=main)
     return parser
 
 
-def _validate_application_zip(application_zip):
-    if application_zip is None:
-        print("No valid application zip path specified via '-z'. Cannot continue.")
+def _validate_application_archive(application_archive):
+    if application_archive is None:
+        print("No valid application archive path specified. Cannot continue.")
         sys.exit(1)
 
-    if not application_zip.endswith(".zip") and not application_zip.endswith(".apk"):
+    if not application_archive.endswith(".zip") and not application_archive.endswith(
+        ".apk"
+    ):
         print("application-path does not lead to a .zip or apk file. Cannot continue.")
         sys.exit(1)
 
-    if not os.path.isfile(application_zip):
-        print("no file found under {}. Cannot continue.".format(application_zip))
+    if not os.path.isfile(application_archive):
+        print("no file found under {}. Cannot continue.".format(application_archive))
         sys.exit(1)
 
 
 def main(args):
-    application_zip = args.application_zip
-    _validate_application_zip(application_zip)
 
-    config_parameters = {}
+    application_archive = args.application_archive
+    _validate_application_archive(application_archive)
 
-    # replace application config with passed args
-    if not args.application_name is None:
-        config_parameters["name"] = args.application_name
-
-    if not args.application_description is None:
-        config_parameters["description_html"] = args.application_description
-
-    if not args.application_version is None:
-        config_parameters["version"] = args.application_version
-
-    if not args.application_identity is None:
-        config_parameters["identity"] = args.application_identity
-
-    if not args.current_version is None:
-        config_parameters["current_version"] = args.current_version
-
-    if not args.application_type is None:
-        config_parameters["application_type"] = args.application_type
-
-    if not args.application_tags is None:
-        config_parameters["tags"] = json.dumps(args.application_tags.split(","))
-
-    if not args.target_platform is None:
-        config_parameters["target_platform"] = args.target_platform
-
-    if not args.package_name is None:
-        config_parameters["package_name"] = args.package_name
-
-    if not args.executable_path is None:
-        config_parameters["executable_path"] = args.executable_path
-
-    if not args.panoramic_preview_image is None:
-        config_parameters["panoramic_preview_image"] = args.panoramic_preview_image
-
-    # Validate application config
-    if config_parameters.get("name") is None:
-        print("Application name not provided. Cannot continue.")
-        sys.exit(1)
-
-    if (
-        config_parameters.get("executable_path") is None
-        and args.target_platform == "windows"
-    ):
-        print("'executable_path' name not provided. Cannot continue.")
-        sys.exit(1)
-
-    if config_parameters.get("version") is None:
-        print("'version' name not provided. Cannot continue.")
-        sys.exit(1)
+    config_parameters = vars(args)
+    del config_parameters["func"]
 
     # Upload application
-    uploader = ApplicationUploader(
-        base_url=args.base_url, username=args.username, password=args.password
-    )
-    response = uploader.upload_application(application_zip, config_parameters)
+    uploader = ApplicationUploader(base_url=PORTAL_BACKEND_ENDPOINT)
+    response = uploader.upload_application(application_archive, config_parameters)
 
-    print("Finished upload with status: {}".format(response.status_code))
+    print(response.text)
     if not response.ok:
-        print(response.text)
         exit(1)
 
 

@@ -1,6 +1,8 @@
 from io import BytesIO
+
 import requests
 import requests_mock
+
 from portal_client.portal_chunked_upload import _clone_chunk
 
 
@@ -13,7 +15,6 @@ def consume_chunk(chunk):
 def test_retry_sending_chunk(requests_mock: requests_mock.Mocker):
     # Given a chunk of byte data
     chunk = BytesIO(b"My first chunk")
-    print("Hello world")
 
     # When sending it to the backend, then trying to send it again afterwards
     requests_mock.post("https://test.org/chunked_upload/", text="Success")
@@ -29,7 +30,6 @@ def test_retry_sending_chunk(requests_mock: requests_mock.Mocker):
 def test_retry_sending_chunk_by_cloning(requests_mock: requests_mock.Mocker):
     # Given a chunk of byte data
     chunk_data = b"My first chunk"
-    print("Hello world")
 
     # When sending it to the backend, then trying to send it again afterwards
     requests_mock.post("https://test.org/chunked_upload/", text="Success")
@@ -52,7 +52,6 @@ def test_retry_sending_chunk_by_cloning_underlying_data(
     # Given a chunk of byte data
     original_chunk = BytesIO(b"My first chunk")
     original_chunk.name = "Test"
-    print("Hello world")
 
     # When sending it to the backend, then trying to send it again afterwards
     requests_mock.post("https://test.org/chunked_upload/", text="Success")
