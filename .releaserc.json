@@ -7,7 +7,7 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "./srcipts/update-version-number.sh ${nextRelease.version}"
+        "prepareCmd": "./scripts/update-version-number.sh ${nextRelease.version}"
       }
     ],
     [
