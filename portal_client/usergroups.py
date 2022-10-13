@@ -1,3 +1,4 @@
+import json
 from argparse import ArgumentParser
 from urllib.parse import urljoin
 
@@ -8,21 +9,26 @@ from portal_client.pagination import pagination_parser
 from portal_client.utils import get_authorization_header
 
 
-def list_users(args):
+def list_usergroups(**filters):
     users_url = urljoin(PORTAL_BACKEND_ENDPOINT, "/api/groups/")
     response = requests.get(
         users_url,
         headers={"Authorization": get_authorization_header()},
-        params={
-            "organization": args.organization,
-            "groups": args.user_groups,
-            "page": args.page,
-            "page_size": args.page_size,
-            "search": args.search,
-        },
+        params=filters,
     )
 
-    print(response.text)
+    return response.json()
+
+
+def list_usergroups_cli(args):
+    user_list_response = list_usergroups(
+        organization=args.organization,
+        groups=args.user_groups,
+        page=args.page,
+        page_size=args.page_size,
+        search=args.search,
+    )
+    print(json.dumps(user_list_response))
 
 
 def configure_user_groups_parser(parser: ArgumentParser):
@@ -57,4 +63,4 @@ def configure_user_groups_parser(parser: ArgumentParser):
         help="A search term (e.g. group name) to filter results by",
     )
 
-    usergroup_list_parser.set_defaults(func=list_users)
+    usergroup_list_parser.set_defaults(func=list_usergroups_cli)
