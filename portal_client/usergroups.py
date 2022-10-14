@@ -41,6 +41,7 @@ def add_users_to_group(group, users):
         json={"users": users},
     )
 
+    response.raise_for_status()
     if not response.ok:
         print(response.json())
 
@@ -64,7 +65,7 @@ def remove_user_from_group(group, user):
         maange_users_within_group_url,
         headers={"Authorization": get_authorization_header()},
     )
-
+    response.raise_for_status()
     if not response.ok:
         print(response.json())
 
