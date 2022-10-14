@@ -16,9 +16,10 @@ def list_users(**filters):
         headers={"Authorization": get_authorization_header()},
         params=filters,
     )
-    response.raise_for_status()
+
     if not response.ok:
         print(response.json())
+    response.raise_for_status()
 
     return response.json()
 
@@ -42,9 +43,10 @@ def create_user(**properties):
         headers={"Authorization": get_authorization_header()},
         json=properties,
     )
-    response.raise_for_status()
+
     if not response.ok:
         print(response.json())
+    response.raise_for_status()
 
     return response.json()
 
