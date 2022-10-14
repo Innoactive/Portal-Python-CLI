@@ -17,6 +17,10 @@ def list_usergroups(**filters):
         params=filters,
     )
 
+    response.raise_for_status()
+    if not response.ok:
+        print(response.json())
+
     return response.json()
 
 
