@@ -128,7 +128,6 @@ def configure_parser(parser):
     parser.add_argument(
         "--organization-ids",
         nargs="+",
-        type=str,
         help="ID(s) of any organization the app should be available in.",
         required=True,
     )

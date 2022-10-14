@@ -31,6 +31,26 @@ def list_users_cli(args):
     print(json.dumps(users_response))
 
 
+def create_user(**properties):
+    users_url = urljoin(PORTAL_BACKEND_ENDPOINT, "/api/users/")
+    response = requests.post(
+        users_url,
+        headers={"Authorization": get_authorization_header()},
+        json=properties,
+    )
+    return response.json()
+
+
+def create_user_cli(args):
+    user_creation_response = create_user(
+        email=args.email,
+        organizations=args.organization_ids,
+        first_name=args.first_name,
+        last_name=args.last_name,
+    )
+    print(user_creation_response.text)
+
+
 def configure_users_parser(parser: ArgumentParser):
     users_parser = parser.add_subparsers(
         description="List and manage user accounts on Portal"
@@ -62,3 +82,20 @@ def configure_users_parser(parser: ArgumentParser):
     )
 
     users_list_parser.set_defaults(func=list_users_cli)
+
+    user_create_parser = users_parser.add_parser(
+        "create",
+        help="Creates a new user account on Portal",
+    )
+
+    user_create_parser.add_argument("email", help="The user's e-mail address.")
+    user_create_parser.add_argument("--first-name", help="The user's first name.")
+    user_create_parser.add_argument("--last-name", help="The user's last name.")
+    user_create_parser.add_argument(
+        "--organization-ids",
+        help="IDs of any organization the user should be part of.",
+        default=[],
+        nargs="+",
+        required=True,
+    )
+    user_create_parser.set_defaults(func=create_user_cli)

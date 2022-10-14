@@ -64,3 +64,9 @@ def configure_user_groups_parser(parser: ArgumentParser):
     )
 
     usergroup_list_parser.set_defaults(func=list_usergroups_cli)
+
+    # TODO: Add users to groups
+    # POST /api/groups/<id>/users/
+    # {
+    #     "users": []
+    # }
