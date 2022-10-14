@@ -4,13 +4,12 @@ from urllib.parse import urljoin
 
 import requests
 
-from portal_client.defaults import PORTAL_BACKEND_ENDPOINT
 from portal_client.pagination import pagination_parser
 from portal_client.utils import get_authorization_header
 
 
 def list_users(**filters):
-    users_url = urljoin(PORTAL_BACKEND_ENDPOINT, "/api/users/")
+    users_url = urljoin(get_portal_backend_endpoint(), "/api/users/")
     response = requests.get(
         users_url,
         headers={"Authorization": get_authorization_header()},
@@ -36,7 +35,7 @@ def list_users_cli(args):
 
 
 def create_user(**properties):
-    users_url = urljoin(PORTAL_BACKEND_ENDPOINT, "/api/users/")
+    users_url = urljoin(get_portal_backend_endpoint(), "/api/users/")
     response = requests.post(
         users_url,
         headers={"Authorization": get_authorization_header()},

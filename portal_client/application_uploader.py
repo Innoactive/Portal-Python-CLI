@@ -10,7 +10,7 @@ from urllib.parse import urljoin
 import backoff
 import requests
 
-from portal_client.defaults import PORTAL_BACKEND_ENDPOINT
+from portal_client.defaults import get_portal_backend_endpoint
 from portal_client.portal_chunked_upload import ChunkedUploader
 from portal_client.utils import get_authorization_header
 
@@ -160,7 +160,7 @@ def main(args):
     del config_parameters["func"]
 
     # Upload application
-    uploader = ApplicationUploader(base_url=PORTAL_BACKEND_ENDPOINT)
+    uploader = ApplicationUploader(base_url=get_portal_backend_endpoint())
     response = uploader.upload_application(application_archive, config_parameters)
 
     print(response.text)

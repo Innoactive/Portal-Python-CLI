@@ -1,3 +1,5 @@
 from os import getenv
 
-PORTAL_BACKEND_ENDPOINT = getenv("PORTAL_BACKEND_ENDPOINT", "https://api.innoactive.io")
+
+def get_portal_backend_endpoint():
+    return getenv("PORTAL_BACKEND_ENDPOINT", "https://api.innoactive.io")

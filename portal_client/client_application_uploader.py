@@ -8,7 +8,6 @@ from urllib.parse import urljoin
 import backoff
 import requests
 
-from portal_client.defaults import PORTAL_BACKEND_ENDPOINT
 from portal_client.portal_chunked_upload import ChunkedUploader
 from portal_client.utils import get_authorization_header
 
@@ -96,7 +95,7 @@ def configure_parser(parser):
 def main(args):
     # Upload application
     client_applications_api = ClientApplicationApiClient(
-        base_url=PORTAL_BACKEND_ENDPOINT
+        base_url=get_portal_backend_endpoint()
     )
 
     # Ensure the desired version doesn't exist yet

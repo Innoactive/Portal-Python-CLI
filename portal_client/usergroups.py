@@ -4,13 +4,13 @@ from urllib.parse import urljoin
 
 import requests
 
-from portal_client.defaults import PORTAL_BACKEND_ENDPOINT
+from portal_client.defaults import get_portal_backend_endpoint
 from portal_client.pagination import pagination_parser
 from portal_client.utils import get_authorization_header
 
 
 def list_usergroups(**filters):
-    users_url = urljoin(PORTAL_BACKEND_ENDPOINT, "/api/groups/")
+    users_url = urljoin(get_portal_backend_endpoint(), "/api/groups/")
     response = requests.get(
         users_url,
         headers={"Authorization": get_authorization_header()},
@@ -37,7 +37,7 @@ def list_usergroups_cli(args):
 
 def add_users_to_group(group, users):
     maange_users_within_group_url = urljoin(
-        PORTAL_BACKEND_ENDPOINT, f"/api/groups/{group}/users/"
+        get_portal_backend_endpoint(), f"/api/groups/{group}/users/"
     )
     response = requests.post(
         maange_users_within_group_url,
@@ -63,7 +63,7 @@ def add_users_to_group_cli(args):
 
 def remove_user_from_group(group, user):
     maange_users_within_group_url = urljoin(
-        PORTAL_BACKEND_ENDPOINT, f"/api/groups/{group}/users/{user}"
+        get_portal_backend_endpoint(), f"/api/groups/{group}/users/{user}"
     )
     response = requests.delete(
         maange_users_within_group_url,
