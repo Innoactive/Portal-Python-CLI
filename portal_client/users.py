@@ -48,15 +48,15 @@ def create_user_cli(args):
         first_name=args.first_name,
         last_name=args.last_name,
     )
-    print(user_creation_response.text)
+    print(json.dumps(user_creation_response))
 
 
 def configure_users_parser(parser: ArgumentParser):
-    users_parser = parser.add_subparsers(
+    user_parser = parser.add_subparsers(
         description="List and manage user accounts on Portal"
     )
 
-    users_list_parser = users_parser.add_parser(
+    users_list_parser = user_parser.add_parser(
         "list",
         help="Returns a paginated list of users on Portal",
         parents=[pagination_parser],
@@ -83,14 +83,18 @@ def configure_users_parser(parser: ArgumentParser):
 
     users_list_parser.set_defaults(func=list_users_cli)
 
-    user_create_parser = users_parser.add_parser(
+    user_create_parser = user_parser.add_parser(
         "create",
         help="Creates a new user account on Portal",
     )
 
     user_create_parser.add_argument("email", help="The user's e-mail address.")
-    user_create_parser.add_argument("--first-name", help="The user's first name.")
-    user_create_parser.add_argument("--last-name", help="The user's last name.")
+    user_create_parser.add_argument(
+        "--first-name", help="The user's first name.", required=True
+    )
+    user_create_parser.add_argument(
+        "--last-name", help="The user's last name.", required=True
+    )
     user_create_parser.add_argument(
         "--organization-ids",
         help="IDs of any organization the user should be part of.",
@@ -99,3 +103,5 @@ def configure_users_parser(parser: ArgumentParser):
         required=True,
     )
     user_create_parser.set_defaults(func=create_user_cli)
+
+    return user_parser
