@@ -14,13 +14,15 @@ pip install portal-client@git+https://github.com/Innoactive/Portal-Backend-Pytho
 
 ```bash
 $ innoactive-portal --help
-usage: innoactive-portal [-h] {upload-app,upload-client} ...
+usage: innoactive-portal [-h] {upload-app,upload-client,users,groups} ...
 
 positional arguments:
-  {upload-app,upload-client}
+  {upload-app,upload-client,users,groups}
                         Help on specific commands
     upload-app          Upload of applications / application versions to Portal
     upload-client       Upload of client applications to Portal
+    users               Manage user accounts on Portal
+    groups              Manage user groups on Portal
 
 options:
   -h, --help            show this help message and exit
