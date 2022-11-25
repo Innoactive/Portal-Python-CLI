@@ -5,6 +5,7 @@ from urllib.parse import urljoin
 import requests
 
 from portal_client.defaults import get_portal_backend_endpoint
+from portal_client.organization import organization_parser
 from portal_client.pagination import pagination_parser
 from portal_client.utils import get_authorization_header
 
@@ -69,7 +70,7 @@ def configure_users_parser(parser: ArgumentParser):
     users_list_parser = user_parser.add_parser(
         "list",
         help="Returns a paginated list of users on Portal",
-        parents=[pagination_parser],
+        parents=[pagination_parser, organization_parser],
     )
 
     filters_group = users_list_parser.add_argument_group("filters", "Filtering Users")
@@ -80,11 +81,6 @@ def configure_users_parser(parser: ArgumentParser):
         default=[],
         nargs="+",
         help="Only return users within the given groups (ids)",
-    )
-    filters_group.add_argument(
-        "--organization",
-        type=int,
-        help="Only return users from the given organization (id)",
     )
     filters_group.add_argument(
         "--search",

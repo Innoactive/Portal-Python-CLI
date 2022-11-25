@@ -3,6 +3,7 @@ import argparse
 from portal_client.application_uploader import (
     configure_parser as configure_application_parser,
 )
+from portal_client.applications import configure_applications_parser
 from portal_client.client_application_uploader import (
     configure_parser as configure_client_application_parser,
 )
@@ -13,6 +14,10 @@ from portal_client.users import configure_users_parser
 parser = argparse.ArgumentParser(prog="innoactive-portal")
 subparsers = parser.add_subparsers(help="Help on specific commands")
 
+applications_parser = subparsers.add_parser(
+    "applications", help="Manage application versions on Portal"
+)
+configure_applications_parser(applications_parser)
 application_parser = subparsers.add_parser(
     "upload-app", help="Upload of applications / application versions to Portal"
 )
