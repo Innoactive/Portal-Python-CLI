@@ -1,4 +1,6 @@
 # Innoactive Portal Python Client
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FInnoactive%2FPortal-Backend-Python-Client.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FInnoactive%2FPortal-Backend-Python-Client?ref=badge_shield)
+
 
 Command-line client for Innoactive Portal's APIs, written in Python.
 
@@ -73,3 +75,7 @@ innoactive-portal upload-app \
 ```
 
 You can run `innoactive-portal upload-app --help` to get more information on available parameters.
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FInnoactive%2FPortal-Backend-Python-Client.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FInnoactive%2FPortal-Backend-Python-Client?ref=badge_large)
