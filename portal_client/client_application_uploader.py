@@ -8,6 +8,7 @@ from urllib.parse import urljoin
 import backoff
 import requests
 
+from portal_client.defaults import get_portal_backend_endpoint
 from portal_client.portal_chunked_upload import ChunkedUploader
 from portal_client.utils import get_authorization_header
 
