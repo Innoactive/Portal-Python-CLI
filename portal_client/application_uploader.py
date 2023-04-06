@@ -66,8 +66,8 @@ class ApplicationUploader:
         )
         del config_parameters["organization_ids"]
 
-        # rewrite tags to be a comma separated list
-        # config_parameters["tags"] = ",".join(config_parameters.get("tags", []))
+        if not config_parameters.get("identity"):
+            del config_parameters["identity"]
 
         # publish the application
         return self.publish_application_data(
@@ -101,6 +101,7 @@ def configure_parser(parser):
         help="List of tags to assign to the application.",
         nargs="+",
         type=str,
+        default=[],
     )
     parser.add_argument(
         "--identity",
