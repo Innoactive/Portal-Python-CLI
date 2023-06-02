@@ -4,6 +4,7 @@ from portal_client.application_uploader import (
     configure_parser as configure_application_parser,
 )
 from portal_client.applications import configure_applications_parser
+from portal_client.branding import configure_branding_parser
 from portal_client.client_application_uploader import (
     configure_parser as configure_client_application_parser,
 )
@@ -33,3 +34,6 @@ configure_users_parser(users_parser)
 
 usergroups_parser = subparsers.add_parser("groups", help="Manage user groups on Portal")
 configure_user_groups_parser(usergroups_parser)
+
+branding_parser = subparsers.add_parser("branding", help="Manage branding on Portal")
+configure_branding_parser(branding_parser)
