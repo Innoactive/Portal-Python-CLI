@@ -60,19 +60,18 @@ export PORTAL_BACKEND_ENDPOINT=https://my-portal-instance.example.org
 
 ## Examples
 
-### Uploading a (new) application version
+### Uploading a (new) application build
 
 You will need the application's identity from Portal as well as the application archive (.zip or .apk) to be uploaded.
 
 ```sh
-innoactive-portal upload-app \
+innoactive-portal applications v2 upload-build \
 ./my-new-app-version.zip \ # application archive to be uploaded
+--application-id 8feaa9c8-5aaf-4d49-8eef-0c20e8c73d9c \ # the id of the application this version belongs to
 --version 1.0.2 \ # version number of the new version
---tags tag1 tag2 \ # tags to be assigned to the application (version)
---organization-ids 1 2 3 \ # list of organization (ids) the application should be made available to
---name Test \ # the name of the application (version)
---identity 624 \ # the identity of the application this version belongs to
---current-version # whether or not the application version should be set as the current one
+--xr-platform win-non-vr \ # the XR platform this version is for, can be specified multiple times for multiple platforms
+--launch-args='--my-custom-arg' \ # custom launch arguments for the application
+--changelog='This version contains some bugfixes and new features' # changelog for the new version
 ```
 
-You can run `innoactive-portal upload-app --help` to get more information on available parameters.
+You can run `innoactive-portal applications v2 upload-build --help` to get more information on available parameters.
