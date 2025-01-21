@@ -10,14 +10,14 @@ from urllib.parse import urljoin
 import backoff
 import requests
 
-from portal_client.defaults import get_portal_backend_endpoint
-from portal_client.portal_chunked_upload import ChunkedUploader
-from portal_client.utils import get_authorization_header
+from .defaults import get_portal_backend_endpoint
+from .portal_chunked_upload import ChunkedUploader
+from .utils import get_authorization_header
 
 logging.getLogger("backoff").addHandler(logging.StreamHandler())
 
 
-class ApplicationUploader:
+class ApplicationBuildUploader:
     """
     Class dealing with the upload of an application.
     """
@@ -35,7 +35,7 @@ class ApplicationUploader:
 
         return response
 
-    def upload_application(self, application_file, config_parameters):
+    def upload_application_build(self, application_file, config_parameters):
 
         application_url = urljoin(self.base_url, "/api/applications/")
 
@@ -161,8 +161,8 @@ def main(args):
     del config_parameters["func"]
 
     # Upload application
-    uploader = ApplicationUploader(base_url=get_portal_backend_endpoint())
-    response = uploader.upload_application(application_archive, config_parameters)
+    uploader = ApplicationBuildUploader(base_url=get_portal_backend_endpoint())
+    response = uploader.upload_application_build(application_archive, config_parameters)
 
     print(response.text)
     if not response.ok:

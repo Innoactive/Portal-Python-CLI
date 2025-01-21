@@ -4,9 +4,9 @@ from urllib.parse import urljoin
 
 import requests
 
-from portal_client.defaults import get_portal_backend_endpoint
-from portal_client.pagination import pagination_parser
-from portal_client.utils import get_authorization_header
+from .defaults import get_portal_backend_endpoint
+from .pagination import pagination_parser
+from .utils import get_authorization_header
 
 
 def list_usergroups(**filters):

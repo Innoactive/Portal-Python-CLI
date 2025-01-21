@@ -4,8 +4,8 @@ from urllib.parse import urljoin
 
 import requests
 
-from portal_client.application_uploader import (
-    configure_parser as configure_app_upload_parser,
+from portal_client.application_build_uploader import (
+    configure_parser as configure_app_build_upload_parser,
 )
 from portal_client.defaults import get_portal_backend_endpoint
 from portal_client.organization import organization_parser
@@ -13,7 +13,7 @@ from portal_client.pagination import pagination_parser
 from portal_client.utils import get_authorization_header
 
 
-def list_applications(**filters):
+def list_applications_v1(**filters):
     applications_url = urljoin(get_portal_backend_endpoint(), "/api/applications/")
     response = requests.get(
         applications_url,
@@ -29,7 +29,7 @@ def list_applications(**filters):
 
 
 def list_applications_cli(args):
-    applications_response = list_applications(
+    applications_response = list_applications_v1(
         organization=args.organization,
         page=args.page,
         page_size=args.page_size,
@@ -64,7 +64,7 @@ def upload_application_image_cli(args):
     print(json.dumps(users_response))
 
 
-def configure_applications_parser(parser: ArgumentParser):
+def configure_applications_v1_parser(parser: ArgumentParser):
     application_parser = parser.add_subparsers(
         description="List and manage applications on Portal"
     )
@@ -89,7 +89,7 @@ def configure_applications_parser(parser: ArgumentParser):
         "upload",
         help="Uploads an application to Portal",
     )
-    configure_app_upload_parser(applications_upload_parser)
+    configure_app_build_upload_parser(applications_upload_parser)
 
     application_images_parser = application_parser.add_parser(
         "images",

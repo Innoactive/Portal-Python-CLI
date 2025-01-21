@@ -5,8 +5,8 @@ from urllib.parse import urljoin
 
 import requests
 
-from portal_client.defaults import get_portal_backend_endpoint
-from portal_client.utils import get_authorization_header
+from .defaults import get_portal_backend_endpoint
+from .utils import get_authorization_header
 
 
 def get_branding(organization_id=None):
