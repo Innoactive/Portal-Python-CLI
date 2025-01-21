@@ -9,7 +9,7 @@ readme = "readme.md"
 authors = [
     { name = "Benedikt Reiser", email = "benedikt.reiser@innoactive.de" },
 ]
-version = "0.8"
+version = "3.0.0"
 dependencies = ["requests", "backoff"]
 license = { text = "Apache2" }
 
