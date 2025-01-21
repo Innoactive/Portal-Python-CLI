@@ -8,4 +8,4 @@ fi
 
 echo "Updating Version to: $1"
 
-sed -i "s/version=\".*\",/version=\"$1\",/" setup.py
+sed -i "s/version = \".*\"$/version = \"$1\"/" pyproject.toml

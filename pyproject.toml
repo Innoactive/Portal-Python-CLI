@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "portal_client"
+description = "Client to interact with Portal's API for application management"
+readme = "readme.md"
+authors = [
+    { name = "Benedikt Reiser", email = "benedikt.reiser@innoactive.de" },
+]
+version = "0.8"
+dependencies = ["requests", "backoff"]
+license = { text = "Apache2" }
+
+[project.scripts]
+innoactive-portal = "portal_client.__main__:main"
