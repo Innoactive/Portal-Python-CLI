@@ -128,6 +128,7 @@ def configure_applications_v2_parser(parser: ArgumentParser):
         default=[],
         choices=["win-vr", "win-non-vr", "quest", "wave", "pico"],
         dest="supported_xr_platforms",
+        action="extend",
     )
     applications_upload_build_parser.add_argument(
         "--supports-arbitrary-cli-args",
