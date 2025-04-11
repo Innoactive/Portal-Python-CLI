@@ -72,14 +72,11 @@ def get_application_build_cli(args):
     build_response = get_application_build(args.id)
     print(json.dumps(build_response))
 
-def download_application_build(id=None, url=None, filepath=None):
-    if id:
-        build_info = get_application_build(id)
-        url = build_info.get("application_archive")
-        if not url:
-            raise ValueError("No URL found for the specified build ID.")
-    elif not url:
-        raise ValueError("Either 'id' or 'url' must be provided.")
+def download_application_build(id, filepath=None):
+    build_info = get_application_build(id)
+    url = build_info.get("application_archive")
+    if not url:
+        raise ValueError("No URL found for the specified build ID.")
 
     if not filepath:
         filename = os.path.basename(url)
@@ -111,7 +108,7 @@ def download_application_build(id=None, url=None, filepath=None):
     return target_path
 
 def download_application_build_cli(args):
-    downloaded_file_path = download_application_build(args.id, args.url, args.filepath)
+    downloaded_file_path = download_application_build(args.id, args.filepath)
     print(downloaded_file_path)
 
 def upload_application_build(application_archive, **application_build_data):
@@ -266,17 +263,10 @@ def _configure_applications_v2_builds_download_subparser(parser: ArgumentParser)
     applications_download_build_parser = parser.add_parser(
         "download", help="Download a build from an application"
     )
-
-    group = applications_download_build_parser.add_mutually_exclusive_group(required=True)
-    group.add_argument(
-        "--id",
+    applications_download_build_parser.add_argument(
+        "id",
         help="ID of the build to download.",
     )
-    group.add_argument(
-        "--url",
-        help="URL of the build to download.",
-    )
-
     applications_download_build_parser.add_argument(
         "--filepath",
         help="Path to save the downloaded file.",
