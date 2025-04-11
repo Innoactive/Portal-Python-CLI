@@ -2,6 +2,7 @@ import json
 from argparse import ArgumentParser
 import os
 import tempfile
+from tqdm import tqdm
 from urllib.parse import urljoin
 
 import requests
@@ -81,7 +82,6 @@ def download_application_build(id=None, url=None, filepath=None):
         url = build_info.get("application_archive")
         if not url:
             raise ValueError("No URL found for the specified build ID.")
-        print(f"Resolved build ID {id} to URL: {url}")
     elif not url:
         raise ValueError("Either 'id' or 'url' must be provided.")
     
@@ -92,27 +92,32 @@ def download_application_build(id=None, url=None, filepath=None):
         target_path = os.path.join(temp_dir, filename)
     else:
         target_path = filepath
-    print(f"Target path: {target_path}")
-
-    print(f"Downloading file from {url} to {target_path}")
 
     response = requests.get(
         url,
         headers={"Authorization": get_authorization_header()},
         stream=True
     )
+    
+    total = int(response.headers.get('content-length', 0))
+    with open(target_path, "wb") as f, tqdm(
+        desc = target_path,
+        total = total,
+        unit = "iB",
+        unit_scale = True,
+        unit_divisor = 1024
+    ) as bar:
+        for data in response.iter_content(chunk_size=1024):
+            size = f.write(data)
+            bar.update(size)
+            
     response.raise_for_status()
 
-    with open(target_path, "wb") as f:
-        for chunk in response.iter_content(chunk_size=8192):
-            f.write(chunk)
-
-    print(f"File downloaded to {target_path}")
     return target_path
 
 def download_application_build_cli(args):
     downloaded_file_path = download_application_build(args.id, args.url, args.filepath)
-    print(f"Downloaded file is located at: {downloaded_file_path}")
+    print(downloaded_file_path)
 
 def upload_application_build(application_archive, **application_build_data):
     application_url = urljoin(
@@ -139,7 +144,6 @@ def upload_application_build(application_archive, **application_build_data):
     response.raise_for_status()
 
     return response.json()
-
 
 def upload_application_build_cli(args):
     build_data = vars(args)
