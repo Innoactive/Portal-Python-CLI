@@ -21,7 +21,7 @@ def get_application(application_id):
     response = requests.get(
         application_url, headers={"Authorization": get_authorization_header()}
     )
-    
+
     response.raise_for_status()
 
     return response.json()
@@ -80,7 +80,7 @@ def download_application_build(id=None, url=None, filepath=None):
             raise ValueError("No URL found for the specified build ID.")
     elif not url:
         raise ValueError("Either 'id' or 'url' must be provided.")
-    
+
     if not filepath:
         filename = os.path.basename(url)
         temp_dir = os.path.join(tempfile.gettempdir(), "innoactive-portal")
@@ -94,20 +94,19 @@ def download_application_build(id=None, url=None, filepath=None):
         headers={"Authorization": get_authorization_header()},
         stream=True
     )
-    
+    response.raise_for_status()
+
     total = int(response.headers.get('content-length', 0))
     with open(target_path, "wb") as f, tqdm(
-        desc = target_path,
-        total = total,
-        unit = "iB",
-        unit_scale = True,
-        unit_divisor = 1024
+        desc=target_path,
+        total=total,
+        unit="iB",
+        unit_scale=True,
+        unit_divisor=1024
     ) as bar:
         for data in response.iter_content(chunk_size=1024):
             size = f.write(data)
             bar.update(size)
-            
-    response.raise_for_status()
 
     return target_path
 
@@ -267,7 +266,7 @@ def _configure_applications_v2_builds_download_subparser(parser: ArgumentParser)
     applications_download_build_parser = parser.add_parser(
         "download", help="Download a build from an application"
     )
-    
+
     group = applications_download_build_parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
         "--id",
@@ -292,6 +291,6 @@ def configure_applications_v2_parser(parser: ArgumentParser):
 
     _configure_applications_v2_get_parser(application_parser)
     _configure_applications_v2_list_parser(application_parser)
-    _configure_applications_v2_builds_parser(application_parser)    
+    _configure_applications_v2_builds_parser(application_parser)
 
     return application_parser
