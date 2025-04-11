@@ -21,9 +21,7 @@ def get_application(application_id):
     response = requests.get(
         application_url, headers={"Authorization": get_authorization_header()}
     )
-
-    if not response.ok:
-        print(response.json())
+    
     response.raise_for_status()
 
     return response.json()
@@ -66,8 +64,6 @@ def get_application_build(build_id):
         headers={"Authorization": get_authorization_header()},
     )
 
-    if not response.ok:
-        print(response.json())
     response.raise_for_status()
 
     return response.json()
