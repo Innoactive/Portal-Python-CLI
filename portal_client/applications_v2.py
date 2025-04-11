@@ -80,7 +80,7 @@ def download_application_build(id, filepath=None):
 
     if not filepath:
         filename = os.path.basename(url)
-        temp_dir = os.path.join(tempfile.gettempdir(), "innoactive-portal")
+        temp_dir = os.path.join(tempfile.gettempdir(), "innoactive-portal", id)
         os.makedirs(temp_dir, exist_ok=True)
         target_path = os.path.join(temp_dir, filename)
     else:
