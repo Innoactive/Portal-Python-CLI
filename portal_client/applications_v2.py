@@ -1,5 +1,7 @@
 import json
 from argparse import ArgumentParser
+import os
+import tempfile
 from urllib.parse import urljoin
 
 import requests
@@ -10,6 +12,24 @@ from portal_client.pagination import pagination_parser
 from portal_client.portal_chunked_upload import ChunkedUploader
 from portal_client.utils import get_authorization_header
 
+
+def get_application(application_id):
+    application_url = urljoin(
+        get_portal_backend_endpoint(), f"/api/v2/applications/{application_id}/"
+    )
+    response = requests.get(
+        application_url, headers={"Authorization": get_authorization_header()}
+    )
+
+    if not response.ok:
+        print(response.json())
+    response.raise_for_status()
+
+    return response.json()
+
+def get_application_cli(args):
+    application_response = get_application(args.id)
+    print(json.dumps(application_response))
 
 def list_applications(**filters):
     applications_url = urljoin(get_portal_backend_endpoint(), "/api/v2/applications/")
@@ -36,6 +56,63 @@ def list_applications_cli(args):
 
     print(json.dumps(applications_response))
 
+def get_application_build(build_id):
+    application_build_url = urljoin(
+        get_portal_backend_endpoint(), f"/api/v2/application-builds/{build_id}/"
+    )
+    response = requests.get(
+        application_build_url,
+        headers={"Authorization": get_authorization_header()},
+    )
+
+    if not response.ok:
+        print(response.json())
+    response.raise_for_status()
+
+    return response.json()
+
+def get_application_build_cli(args):
+    build_response = get_application_build(args.id)
+    print(json.dumps(build_response))
+
+def download_application_build(id=None, url=None, filepath=None):
+    if id:
+        build_info = get_application_build(id)
+        url = build_info.get("application_archive")
+        if not url:
+            raise ValueError("No URL found for the specified build ID.")
+        print(f"Resolved build ID {id} to URL: {url}")
+    elif not url:
+        raise ValueError("Either 'id' or 'url' must be provided.")
+    
+    if not filepath:
+        filename = os.path.basename(url)
+        temp_dir = os.path.join(tempfile.gettempdir(), "innoactive-portal")
+        os.makedirs(temp_dir, exist_ok=True)
+        target_path = os.path.join(temp_dir, filename)
+    else:
+        target_path = filepath
+    print(f"Target path: {target_path}")
+
+    print(f"Downloading file from {url} to {target_path}")
+
+    response = requests.get(
+        url,
+        headers={"Authorization": get_authorization_header()},
+        stream=True
+    )
+    response.raise_for_status()
+
+    with open(target_path, "wb") as f:
+        for chunk in response.iter_content(chunk_size=8192):
+            f.write(chunk)
+
+    print(f"File downloaded to {target_path}")
+    return target_path
+
+def download_application_build_cli(args):
+    downloaded_file_path = download_application_build(args.id, args.url, args.filepath)
+    print(f"Downloaded file is located at: {downloaded_file_path}")
 
 def upload_application_build(application_archive, **application_build_data):
     application_url = urljoin(
@@ -70,13 +147,19 @@ def upload_application_build_cli(args):
     application_build_upload_response = upload_application_build(**build_data)
     print(json.dumps(application_build_upload_response))
 
-
-def configure_applications_v2_parser(parser: ArgumentParser):
-    application_parser = parser.add_subparsers(
-        description="List and manage applications on Portal"
+def _configure_applications_v2_get_parser(parser: ArgumentParser):
+    application_get_parser = parser.add_parser(
+        "get", help="Get an application by ID"
     )
+    application_get_parser.add_argument(
+        "id",
+        help="ID of the application to get."
+    )
+    application_get_parser.set_defaults(func=get_application_cli)
+    return application_get_parser
 
-    applications_list_parser = application_parser.add_parser(
+def _configure_applications_v2_list_parser(parser: ArgumentParser):
+    applications_list_parser = parser.add_parser(
         "list",
         help="Returns a paginated list of applications on Portal",
         parents=[pagination_parser, organization_parser],
@@ -91,8 +174,37 @@ def configure_applications_v2_parser(parser: ArgumentParser):
     )
     applications_list_parser.set_defaults(func=list_applications_cli)
 
-    applications_upload_build_parser = application_parser.add_parser(
-        "upload-build", help="Upload a build to an application"
+    return applications_list_parser
+
+def _configure_applications_v2_builds_parser(parser: ArgumentParser):
+    build_parser = parser.add_parser(
+        "builds", help="Manage application builds"
+    )
+    build_subparsers = build_parser.add_subparsers(
+        description="Build-related commands"
+    )
+
+    _configure_applications_v2_builds_get_subparser(build_subparsers)
+    _configure_applications_v2_builds_upload_subparser(build_subparsers)
+    _configure_applications_v2_builds_download_subparser(build_subparsers)
+
+    return build_parser
+
+def _configure_applications_v2_builds_get_subparser(parser: ArgumentParser):
+    # Add the "get" subparser under "build"
+    applications_get_build_parser = parser.add_parser(
+        "get", help="Get an application build by ID"
+    )
+    applications_get_build_parser.add_argument(
+        "id",
+        help="ID of the build to get.",
+    )
+    applications_get_build_parser.set_defaults(func=get_application_build_cli)
+
+def _configure_applications_v2_builds_upload_subparser(parser: ArgumentParser):
+    # Add the "upload" subparser under "build"
+    applications_upload_build_parser = parser.add_parser(
+        "upload", help="Upload a build to an application"
     )
     applications_upload_build_parser.add_argument(
         "application_archive",
@@ -149,5 +261,37 @@ def configure_applications_v2_parser(parser: ArgumentParser):
         default="",
     )
     applications_upload_build_parser.set_defaults(func=upload_application_build_cli)
+
+def _configure_applications_v2_builds_download_subparser(parser: ArgumentParser):
+    # Add the "download" subparser under "build"
+    applications_download_build_parser = parser.add_parser(
+        "download", help="Download a build from an application"
+    )
+    
+    group = applications_download_build_parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
+        "--id",
+        help="ID of the build to download.",
+    )
+    group.add_argument(
+        "--url",
+        help="URL of the build to download.",
+    )
+
+    applications_download_build_parser.add_argument(
+        "--filepath",
+        help="Path to save the downloaded file.",
+    )
+
+    applications_download_build_parser.set_defaults(func=download_application_build_cli)
+
+def configure_applications_v2_parser(parser: ArgumentParser):
+    application_parser = parser.add_subparsers(
+        description="List and manage applications on Portal"
+    )
+
+    _configure_applications_v2_get_parser(application_parser)
+    _configure_applications_v2_list_parser(application_parser)
+    _configure_applications_v2_builds_parser(application_parser)    
 
     return application_parser
