@@ -5,6 +5,7 @@ from urllib.parse import urljoin
 
 import backoff
 import requests
+from tqdm import tqdm
 
 
 def _generate_md5_hash_for_file_at_path(file_path):
@@ -61,41 +62,53 @@ class ChunkedUploader:
             # reset the offset
             offset = 0
 
-            # First chunk returns some special information
-            chunk = BytesIO(read_chunk())
-            chunk.name = path.basename(file_path)
-            initial_url = urljoin(self.base_url, chunked_upload_url_suffix)
-            response = self._upload_first_chunk_of_file(chunk, initial_url)
-            if response.status_code is not requests.codes.ok and early_return_on_error:
-                return response
-
-            # fill md5sum and upload_id received from server, required for subsequent requests
-            upload_id = response.json()["upload_id"]
-
-            # remember the upload offset
-            offset = response.json()["offset"]
-
-            # Continue with other chunks (every other chunk needs to also reference the upload's id
-            chunk_count = 0
-
-            add_chunk_url = urljoin(initial_url, "{0}/".format(upload_id))
-            for piece in iter(read_chunk, ""):
-                chunk_count += 1
-                chunk = BytesIO(piece)
+            # Initialize tqdm progress bar
+            with tqdm(
+                desc=f"Uploading {path.basename(file_path)}",
+                total=file_size,
+                unit="iB",
+                unit_scale=True,
+                unit_divisor=1024,
+            ) as bar:
+                # First chunk returns some special information
+                chunk = BytesIO(read_chunk())
                 chunk.name = path.basename(file_path)
+                initial_url = urljoin(self.base_url, chunked_upload_url_suffix)
+                response = self._upload_first_chunk_of_file(chunk, initial_url)
+                bar.update(len(chunk.getvalue()))  # Update progress bar for the first chunk
 
-                if len(piece) == 0:
-                    break
-                response = self._upload_chunk(
-                    offset, file_size, chunk, len(piece), add_chunk_url
-                )
-                if (
-                    response.status_code is not requests.codes.ok
-                    and early_return_on_error
-                ):
+                if response.status_code is not requests.codes.ok and early_return_on_error:
                     return response
-                # update the offset
+
+                # fill md5sum and upload_id received from server, required for subsequent requests
+                upload_id = response.json()["upload_id"]
+
+                # remember the upload offset
                 offset = response.json()["offset"]
+
+                # Continue with other chunks (every other chunk needs to also reference the upload's id
+                chunk_count = 0
+
+                add_chunk_url = urljoin(initial_url, "{0}/".format(upload_id))
+
+                for piece in iter(read_chunk, b""):
+                    chunk_count += 1
+                    chunk = BytesIO(piece)
+                    chunk.name = path.basename(file_path)
+
+                    if len(piece) == 0:
+                        break
+                    response = self._upload_chunk(
+                        offset, file_size, chunk, len(piece), add_chunk_url
+                    )
+                    if (
+                        response.status_code is not requests.codes.ok
+                        and early_return_on_error
+                    ):
+                        return response
+                    # update the offset
+                    offset = response.json()["offset"]
+                    bar.update(len(piece))
 
         # final post including the file's md5 hash
         commit_chunked_upload_url = urljoin(add_chunk_url, chunked_upload_commit_suffix)
