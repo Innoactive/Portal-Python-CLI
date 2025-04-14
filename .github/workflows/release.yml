@@ -23,7 +23,7 @@ jobs:
       - name: Update setup.py's dependencies
         run: pipenv run pipenv-setup sync --pipfile
       - name: Semantic Release
-        uses: cycjimmy/semantic-release-action@v3
+        uses: cycjimmy/semantic-release-action@v4
         with:
           extra_plugins: |
             @semantic-release/exec
