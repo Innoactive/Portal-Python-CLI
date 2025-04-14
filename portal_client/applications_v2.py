@@ -111,7 +111,7 @@ def download_application_build_cli(args):
     downloaded_file_path = download_application_build(args.id, args.filepath)
     print(downloaded_file_path)
 
-def upload_application_build(application_archive, **application_build_data):
+def upload_application_build(application_archive, chunk_size_bytes, **application_build_data):
     application_url = urljoin(
         get_portal_backend_endpoint(), "/api/v2/application-builds/"
     )
@@ -122,7 +122,7 @@ def upload_application_build(application_archive, **application_build_data):
     uploader = ChunkedUploader(
         base_url=application_url, authorization_header=authorization_header
     )
-    application_zip_url = uploader.upload_chunked_file(file_path=application_archive)
+    application_zip_url = uploader.upload_chunked_file(file_path=application_archive, chunk_size_bytes=chunk_size_bytes)
     application_build_data["application_archive"] = application_zip_url
 
     # publish application build data
@@ -256,6 +256,15 @@ def _configure_applications_v2_builds_upload_subparser(parser: ArgumentParser):
         dest="changelog",
         default="",
     )
+
+    applications_upload_build_parser.add_argument(
+        "--chunk-size",
+        help="Chunk size in bytes for the upload. Default is 2 MiB.",
+        type=int,
+        dest="chunk_size_bytes",
+        default=2 * 1024 * 1024,
+    )
+
     applications_upload_build_parser.set_defaults(func=upload_application_build_cli)
 
 def _configure_applications_v2_builds_download_subparser(parser: ArgumentParser):

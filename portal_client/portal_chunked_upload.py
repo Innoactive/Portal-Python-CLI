@@ -27,9 +27,9 @@ class ChunkedUploader:
         self.base_url = base_url
         self.authorization_header = authorization_header
 
-    def upload_chunked_file(self, file_path, early_return_on_error=True, md5=None):
+    def upload_chunked_file(self, file_path, early_return_on_error=True, md5=None, chunk_size_bytes=2 << 20):
         response = self._chunked_upload_file(
-            file_path, early_return_on_error=early_return_on_error, md5=md5
+            file_path, early_return_on_error=early_return_on_error, md5=md5, chunk_size_bytes=chunk_size_bytes
         )
         if response.status_code != requests.codes.ok:
             print(response.text)
