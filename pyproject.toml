@@ -9,8 +9,8 @@ readme = "readme.md"
 authors = [
     { name = "Benedikt Reiser", email = "benedikt.reiser@innoactive.de" },
 ]
-version = "3.0.1"
-dependencies = ["requests", "backoff"]
+version = "3.1.0"
+dependencies = ["requests", "backoff", "tqdm"]
 license = { text = "Apache2" }
 
 [project.scripts]
