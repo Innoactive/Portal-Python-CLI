@@ -36,7 +36,6 @@ class ApplicationBuildUploader:
         return response
 
     def upload_application_build(self, application_file, config_parameters):
-
         application_url = urljoin(self.base_url, "/api/applications/")
 
         authorization_header = get_authorization_header()
@@ -153,7 +152,6 @@ def _validate_application_archive(application_archive):
 
 
 def main(args):
-
     application_archive = args.application_archive
     _validate_application_archive(application_archive)
 

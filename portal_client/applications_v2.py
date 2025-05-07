@@ -26,9 +26,11 @@ def get_application(application_id):
 
     return response.json()
 
+
 def get_application_cli(args):
     application_response = get_application(args.id)
     print(json.dumps(application_response))
+
 
 def list_applications(**filters):
     applications_url = urljoin(get_portal_backend_endpoint(), "/api/v2/applications/")
@@ -55,6 +57,7 @@ def list_applications_cli(args):
 
     print(json.dumps(applications_response))
 
+
 def get_application_build(build_id):
     application_build_url = urljoin(
         get_portal_backend_endpoint(), f"/api/v2/application-builds/{build_id}/"
@@ -68,9 +71,11 @@ def get_application_build(build_id):
 
     return response.json()
 
+
 def get_application_build_cli(args):
     build_response = get_application_build(args.id)
     print(json.dumps(build_response))
+
 
 def download_application_build(id, filepath=None):
     build_info = get_application_build(id)
@@ -87,31 +92,32 @@ def download_application_build(id, filepath=None):
         target_path = filepath
 
     response = requests.get(
-        url,
-        headers={"Authorization": get_authorization_header()},
-        stream=True
+        url, headers={"Authorization": get_authorization_header()}, stream=True
     )
     response.raise_for_status()
 
-    total = int(response.headers.get('content-length', 0))
-    with open(target_path, "wb") as f, tqdm(
-        desc=target_path,
-        total=total,
-        unit="iB",
-        unit_scale=True,
-        unit_divisor=1024
-    ) as bar:
+    total = int(response.headers.get("content-length", 0))
+    with (
+        open(target_path, "wb") as f,
+        tqdm(
+            desc=target_path, total=total, unit="iB", unit_scale=True, unit_divisor=1024
+        ) as bar,
+    ):
         for data in response.iter_content(chunk_size=1024):
             size = f.write(data)
             bar.update(size)
 
     return target_path
 
+
 def download_application_build_cli(args):
     downloaded_file_path = download_application_build(args.id, args.filepath)
     print(downloaded_file_path)
 
-def upload_application_build(application_archive, chunk_size_bytes, **application_build_data):
+
+def upload_application_build(
+    application_archive, chunk_size_bytes, **application_build_data
+):
     application_url = urljoin(
         get_portal_backend_endpoint(), "/api/v2/application-builds/"
     )
@@ -122,7 +128,9 @@ def upload_application_build(application_archive, chunk_size_bytes, **applicatio
     uploader = ChunkedUploader(
         base_url=application_url, authorization_header=authorization_header
     )
-    application_zip_url = uploader.upload_chunked_file(file_path=application_archive, chunk_size_bytes=chunk_size_bytes)
+    application_zip_url = uploader.upload_chunked_file(
+        file_path=application_archive, chunk_size_bytes=chunk_size_bytes
+    )
     application_build_data["application_archive"] = application_zip_url
 
     # publish application build data
@@ -137,24 +145,22 @@ def upload_application_build(application_archive, chunk_size_bytes, **applicatio
 
     return response.json()
 
+
 def upload_application_build_cli(args):
     build_data = vars(args)
     del build_data["func"]
     application_build_upload_response = upload_application_build(**build_data)
     print(json.dumps(application_build_upload_response))
 
+
 def _configure_applications_v2_get_parser(application_get_parser: ArgumentParser):
-    application_get_parser.add_argument(
-        "id",
-        help="ID of the application to get."
-    )
+    application_get_parser.add_argument("id", help="ID of the application to get.")
     application_get_parser.set_defaults(func=get_application_cli)
     return application_get_parser
 
+
 def _configure_applications_v2_list_parser(list_parser: ArgumentParser):
-    filters_group = list_parser.add_argument_group(
-        "filters", "Filtering Applications"
-    )
+    filters_group = list_parser.add_argument_group("filters", "Filtering Applications")
     filters_group.add_argument(
         "--search",
         help="A search term (e.g. application name) to filter results by",
@@ -163,30 +169,39 @@ def _configure_applications_v2_list_parser(list_parser: ArgumentParser):
 
     return list_parser
 
-def _configure_applications_v2_builds_parser(build_parser: ArgumentParser):
-    build_subparsers = build_parser.add_subparsers(
-        description="Build-related commands"
-    )
 
-    get_subparser = build_subparsers.add_parser("get", help="Get an application build by ID")
+def _configure_applications_v2_builds_parser(build_parser: ArgumentParser):
+    build_subparsers = build_parser.add_subparsers(description="Build-related commands")
+
+    get_subparser = build_subparsers.add_parser(
+        "get", help="Get an application build by ID"
+    )
     _configure_applications_v2_builds_get_subparser(get_subparser)
 
     upload_subparser = build_subparsers.add_parser("upload", help="Upload a new build")
     _configure_applications_v2_builds_upload_subparser(upload_subparser)
 
-    download_subparser = build_subparsers.add_parser("download", help="Download an application build")
+    download_subparser = build_subparsers.add_parser(
+        "download", help="Download an application build"
+    )
     _configure_applications_v2_builds_download_subparser(download_subparser)
 
     return build_parser
 
-def _configure_applications_v2_builds_get_subparser(applications_get_build_parser: ArgumentParser):
+
+def _configure_applications_v2_builds_get_subparser(
+    applications_get_build_parser: ArgumentParser,
+):
     applications_get_build_parser.add_argument(
         "id",
         help="ID of the build to get.",
     )
     applications_get_build_parser.set_defaults(func=get_application_build_cli)
 
-def _configure_applications_v2_builds_upload_subparser(applications_upload_build_parser: ArgumentParser):
+
+def _configure_applications_v2_builds_upload_subparser(
+    applications_upload_build_parser: ArgumentParser,
+):
     applications_upload_build_parser.add_argument(
         "application_archive",
         help="Path to the application archive / package to be uploaded.",
@@ -252,7 +267,10 @@ def _configure_applications_v2_builds_upload_subparser(applications_upload_build
 
     applications_upload_build_parser.set_defaults(func=upload_application_build_cli)
 
-def _configure_applications_v2_builds_download_subparser(download_parser: ArgumentParser):
+
+def _configure_applications_v2_builds_download_subparser(
+    download_parser: ArgumentParser,
+):
     download_parser.add_argument(
         "id",
         help="ID of the build to download.",
@@ -263,6 +281,7 @@ def _configure_applications_v2_builds_download_subparser(download_parser: Argume
     )
 
     download_parser.set_defaults(func=download_application_build_cli)
+
 
 def configure_applications_v2_parser(parser: ArgumentParser):
     application_parser = parser.add_subparsers(
@@ -282,7 +301,9 @@ def configure_applications_v2_parser(parser: ArgumentParser):
     _configure_applications_v2_list_parser(list_parser)
 
     # "applications v2 builds ..."
-    builds_parser = application_parser.add_parser("builds", help="Manage application builds")
+    builds_parser = application_parser.add_parser(
+        "builds", help="Manage application builds"
+    )
     _configure_applications_v2_builds_parser(builds_parser)
 
     # "applications v2 upload-build <args>"

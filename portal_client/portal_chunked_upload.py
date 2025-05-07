@@ -27,9 +27,14 @@ class ChunkedUploader:
         self.base_url = base_url
         self.authorization_header = authorization_header
 
-    def upload_chunked_file(self, file_path, early_return_on_error=True, md5=None, chunk_size_bytes=2 << 20):
+    def upload_chunked_file(
+        self, file_path, early_return_on_error=True, md5=None, chunk_size_bytes=2 << 20
+    ):
         response = self._chunked_upload_file(
-            file_path, early_return_on_error=early_return_on_error, md5=md5, chunk_size_bytes=chunk_size_bytes
+            file_path,
+            early_return_on_error=early_return_on_error,
+            md5=md5,
+            chunk_size_bytes=chunk_size_bytes,
         )
         if response.status_code != requests.codes.ok:
             print(response.text)
@@ -75,9 +80,14 @@ class ChunkedUploader:
                 chunk.name = path.basename(file_path)
                 initial_url = urljoin(self.base_url, chunked_upload_url_suffix)
                 response = self._upload_first_chunk_of_file(chunk, initial_url)
-                bar.update(len(chunk.getvalue()))  # Update progress bar for the first chunk
+                bar.update(
+                    len(chunk.getvalue())
+                )  # Update progress bar for the first chunk
 
-                if response.status_code is not requests.codes.ok and early_return_on_error:
+                if (
+                    response.status_code is not requests.codes.ok
+                    and early_return_on_error
+                ):
                     return response
 
                 # fill md5sum and upload_id received from server, required for subsequent requests
