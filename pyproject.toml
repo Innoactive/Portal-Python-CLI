@@ -1,17 +1,28 @@
+[project]
+name = "portal_client"
+version = "3.1.0"
+description = "Client to interact with Portal's API for application & user management"
+authors = [
+    { name = "Benedikt Reiser", email = "benedikt.reiser@innoactive.de" },
+]
+requires-python = ">=3.10"
+readme = "readme.md"
+license = { text = "Apache2" }
+dependencies = ["requests", "backoff", "tqdm"]
+
+[project.scripts]
+innoactive-portal = "portal_client.__main__:main"
+
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
-[project]
-name = "portal_client"
-description = "Client to interact with Portal's API for application management"
-readme = "readme.md"
-authors = [
-    { name = "Benedikt Reiser", email = "benedikt.reiser@innoactive.de" },
-]
-version = "3.1.0"
-dependencies = ["requests", "backoff", "tqdm"]
-license = { text = "Apache2" }
+[dependency-groups]
+dev = ["requests-mock", "pytest", "ruff>=0.11.8"]
 
-[project.scripts]
-innoactive-portal = "portal_client.__main__:main"
+[tool.uv]
+package = true
+
+[[tool.uv.index]]
+name = "pypi"
+url = "https://pypi.org/simple"

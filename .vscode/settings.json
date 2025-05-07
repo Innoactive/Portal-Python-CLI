@@ -1,10 +1,9 @@
 {
   "editor.codeActionsOnSave": {
     "source.organizeImports": "explicit",
-    "source.fixAll": "explicit"
+    "source.fixAll": "explicit",
+    "source.organizeImports.ruff": "explicit",
+    "source.unusedImports": "explicit"
   },
-  "editor.formatOnSave": true,
-  "python.formatting.provider": "black",
-  "python.testing.pytestEnabled": true,
-  "python.linting.enabled": true
+  "editor.formatOnSave": true
 }

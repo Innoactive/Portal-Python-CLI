@@ -14,10 +14,10 @@ jobs:
       - name: Setup python version
         uses: actions/setup-python@v2
         with:
-          python-version: "3.10"
-      - name: Install pipenv
-        run: pip install --user pipenv
+          python-version: "3.12"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
       - name: Install dependecies
-        run: pipenv sync --dev
+        run: uv sync --locked
       - name: Run tests
-        run: pipenv run pytest
+        run: uv run pytest
