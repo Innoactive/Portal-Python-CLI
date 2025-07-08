@@ -1,6 +1,6 @@
 [project]
 name = "portal_client"
-version = "3.1.0"
+version = "3.2.0"
 description = "Client to interact with Portal's API for application & user management"
 authors = [
     { name = "Benedikt Reiser", email = "benedikt.reiser@innoactive.de" },
