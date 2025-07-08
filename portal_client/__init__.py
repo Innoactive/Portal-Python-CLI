@@ -10,6 +10,7 @@ from .client_application_uploader import (
     configure_parser as configure_client_application_parser,
 )
 from .organizations import configure_organizations_parser
+from .session_management import configure_session_management_parser
 from .usergroups import configure_user_groups_parser
 from .users import configure_users_parser
 
@@ -57,3 +58,6 @@ organizations_parser = subparsers.add_parser(
     "organizations", help="Manage organizations on Portal"
 )
 configure_organizations_parser(organizations_parser)
+
+vm_parser = subparsers.add_parser("vms", help="Manage Virtual Machines")
+configure_session_management_parser(vm_parser)
