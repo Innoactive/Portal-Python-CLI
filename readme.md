@@ -14,10 +14,10 @@ pip install portal-client@git+https://github.com/Innoactive/Portal-Python-CLI.gi
 
 ```bash
 $ innoactive-portal --help
-usage: innoactive-portal [-h] {applications,upload-app,upload-client,users,groups,branding,organizations} ...
+usage: innoactive-portal [-h] {applications,upload-app,upload-client,users,groups,branding,organizations,vm} ...
 
 positional arguments:
-  {applications,upload-app,upload-client,users,groups,branding,organizations}
+  {applications,upload-app,upload-client,users,groups,branding,organizations,vm}
                         Help on specific commands
     applications        Manage application versions on Portal
     upload-app          Upload of applications / application versions to Portal
@@ -26,6 +26,7 @@ positional arguments:
     groups              Manage user groups on Portal
     branding            Manage branding on Portal
     organizations       Manage organizations on Portal
+    vm                  Manage Virtual Machines
 
 options:
   -h, --help            show this help message and exit
@@ -56,6 +57,14 @@ To use another Portal instance, set the environment variable like:
 
 ```sh
 export PORTAL_BACKEND_ENDPOINT=https://my-portal-instance.example.org
+```
+
+For VM management, you can also configure the session management endpoint. The default is `https://session-management.innoactive.io`.
+
+To use a different session management endpoint, set:
+
+```sh
+export PORTAL_SESSION_MANAGEMENT_ENDPOINT=https://my-session-mgmt.example.org
 ```
 
 ## Examples
