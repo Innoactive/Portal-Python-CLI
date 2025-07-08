@@ -141,7 +141,7 @@ wheels = [
 [[package]]
 name = "portal-client"
 version = "3.1.0"
-source = { editable = "." }
+source = { virtual = "." }
 dependencies = [
     { name = "backoff" },
     { name = "requests" },
