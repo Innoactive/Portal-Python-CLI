@@ -7,7 +7,7 @@ Command-line client for Innoactive Portal's APIs, written in Python.
 To install it via pip (currently not published via pypi), run:
 
 ```sh
-pip install portal-client@git+https://github.com/Innoactive/Portal-Backend-Python-Client.git@main
+pip install portal-client@git+https://github.com/Innoactive/Portal-Python-CLI.git@main
 ```
 
 ## Usage
