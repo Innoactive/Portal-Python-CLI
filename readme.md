@@ -75,3 +75,19 @@ innoactive-portal applications v2 upload-build \
 ```
 
 You can run `innoactive-portal applications v2 upload-build --help` to get more information on available parameters.
+
+## Development
+
+To run the client locally, you can clone the repository and install the dependencies via uv:
+
+```sh
+git clone https://github.com/Innoactive/Portal-Python-CLI.git
+cd Portal-Python-CLI
+uv sync --locked
+```
+
+To run the client, you can use the `uv run` command:
+
+```sh
+uv run python -m portal_client --help
+```
