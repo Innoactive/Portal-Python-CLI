@@ -149,9 +149,32 @@ def upload_application_build(
 def upload_application_build_cli(args):
     build_data = vars(args)
     del build_data["func"]
-    application_build_upload_response = upload_application_build(**build_data)
-    print(json.dumps(application_build_upload_response))
+    application_build_upload_responses = upload_application_build(**build_data)
+    for repsonse in application_build_upload_responses:
+        print(json.dumps(repsonse))
 
+def set_current_application_build(application_id, platforms, build_id):
+    authorization_header = get_authorization_header()
+    body = {"application_build": build_id}
+
+    responses = []
+    for platform in platforms:
+        url = urljoin(get_portal_backend_endpoint(), f"/api/v2/applications/{application_id}/launch-configurations/{platform}/")
+        response = requests.patch(url, headers={"Authorization": authorization_header}, json=body)
+        if not response.ok:
+            print(response.json())
+        response.raise_for_status()
+        responses.append(response.json())
+
+    return responses
+
+def set_current_application_build_cli(args):
+    set_current_application_build_response = set_current_application_build(
+        application_id=args.id,
+        platforms=args.xr_platforms,
+        build_id=args.build_id
+    )
+    print(json.dumps(set_current_application_build_response))
 
 def _configure_applications_v2_get_parser(application_get_parser: ArgumentParser):
     application_get_parser.add_argument("id", help="ID of the application to get.")
@@ -185,6 +208,11 @@ def _configure_applications_v2_builds_parser(build_parser: ArgumentParser):
         "download", help="Download an application build"
     )
     _configure_applications_v2_builds_download_subparser(download_subparser)
+
+    set_subparser = build_subparsers.add_parser(
+        "set", help="Set the current application build"
+    )
+    _configure_applications_v2_builds_set_subparser(set_subparser)
 
     return build_parser
 
@@ -282,6 +310,25 @@ def _configure_applications_v2_builds_download_subparser(
 
     download_parser.set_defaults(func=download_application_build_cli)
 
+def _configure_applications_v2_builds_set_subparser(
+    set_parser: ArgumentParser,
+):
+    set_parser.add_argument(
+        "id",
+        help="ID of the application to set the build for.",
+    )
+    set_parser.add_argument(
+        "xr_platforms",
+        help="Platforms to set the build for.",
+        nargs="*",
+        default=[],
+        choices=["win-vr", "win-non-vr", "quest", "wave", "pico"],
+    )
+    set_parser.add_argument(
+        "build_id",
+        help="ID of the build to set as current.",
+    )
+    set_parser.set_defaults(func=set_current_application_build_cli)
 
 def configure_applications_v2_parser(parser: ArgumentParser):
     application_parser = parser.add_subparsers(
