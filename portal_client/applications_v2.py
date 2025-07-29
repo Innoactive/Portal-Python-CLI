@@ -149,9 +149,8 @@ def upload_application_build(
 def upload_application_build_cli(args):
     build_data = vars(args)
     del build_data["func"]
-    application_build_upload_responses = upload_application_build(**build_data)
-    for repsonse in application_build_upload_responses:
-        print(json.dumps(repsonse))
+    application_build_upload_response = upload_application_build(**build_data)
+    print(json.dumps(application_build_upload_response))
 
 
 def update_launch_configuration(application_id, platforms, build_id):
