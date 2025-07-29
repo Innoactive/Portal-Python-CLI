@@ -153,7 +153,7 @@ def upload_application_build_cli(args):
     for repsonse in application_build_upload_responses:
         print(json.dumps(repsonse))
 
-def set_current_application_build(application_id, platforms, build_id):
+def update_launch_configuration(application_id, platforms, build_id):
     authorization_header = get_authorization_header()
     body = {"application_build": build_id}
 
@@ -168,13 +168,13 @@ def set_current_application_build(application_id, platforms, build_id):
 
     return responses
 
-def set_current_application_build_cli(args):
-    set_current_application_build_response = set_current_application_build(
+def update_launch_configuration_cli(args):
+    update_launch_configuration_response = update_launch_configuration(
         application_id=args.id,
         platforms=args.xr_platforms,
         build_id=args.build_id
     )
-    print(json.dumps(set_current_application_build_response))
+    print(json.dumps(update_launch_configuration_response))
 
 def _configure_applications_v2_get_parser(application_get_parser: ArgumentParser):
     application_get_parser.add_argument("id", help="ID of the application to get.")
@@ -209,13 +209,28 @@ def _configure_applications_v2_builds_parser(build_parser: ArgumentParser):
     )
     _configure_applications_v2_builds_download_subparser(download_subparser)
 
-    set_subparser = build_subparsers.add_parser(
-        "set", help="Set the current application build"
-    )
-    _configure_applications_v2_builds_set_subparser(set_subparser)
-
     return build_parser
 
+def _configure_applications_v2_update_launch_configuration_parser(update_launch_configuration_parser: ArgumentParser):
+    update_launch_configuration_parser.add_argument(
+        "id",
+        help="ID of the application to update",
+    )
+
+    update_launch_configuration_parser.add_argument(
+        "xr_platforms",
+        help="Platforms to update the build for.",
+        nargs="*",
+        default=[],
+        choices=["win-vr", "win-non-vr", "quest", "wave", "pico"],
+    )
+
+    update_launch_configuration_parser.add_argument(
+        "build_id",
+        help="ID of the build to set as current.",
+    )
+
+    update_launch_configuration_parser.set_defaults(func=update_launch_configuration_cli)
 
 def _configure_applications_v2_builds_get_subparser(
     applications_get_build_parser: ArgumentParser,
@@ -310,26 +325,6 @@ def _configure_applications_v2_builds_download_subparser(
 
     download_parser.set_defaults(func=download_application_build_cli)
 
-def _configure_applications_v2_builds_set_subparser(
-    set_parser: ArgumentParser,
-):
-    set_parser.add_argument(
-        "id",
-        help="ID of the application to set the build for.",
-    )
-    set_parser.add_argument(
-        "xr_platforms",
-        help="Platforms to set the build for.",
-        nargs="*",
-        default=[],
-        choices=["win-vr", "win-non-vr", "quest", "wave", "pico"],
-    )
-    set_parser.add_argument(
-        "build_id",
-        help="ID of the build to set as current.",
-    )
-    set_parser.set_defaults(func=set_current_application_build_cli)
-
 def configure_applications_v2_parser(parser: ArgumentParser):
     application_parser = parser.add_subparsers(
         description="List and manage applications on Portal"
@@ -359,5 +354,12 @@ def configure_applications_v2_parser(parser: ArgumentParser):
         help="Upload a new application build, alias for 'builds upload'",
     )
     _configure_applications_v2_builds_upload_subparser(upload_build_parser)
+
+    # "applications v2 update-launch-configuration <args>"
+    update_launch_configuration_parser = application_parser.add_parser(
+        "update-launch-configuration",
+        help="Set current application build for platform"
+    )
+    _configure_applications_v2_update_launch_configuration_parser(update_launch_configuration_parser)
 
     return application_parser
