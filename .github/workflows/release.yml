@@ -18,8 +18,18 @@ jobs:
           # Must be false: otherwise checkout stores the default GITHUB_TOKEN as a git
           # auth header and the release push would use it (github-actions[bot], which is
           # NOT on main's bypass list → GH006). With no persisted credentials, the push
-          # uses the SEMANTIC_RELEASE_GH_TOKEN below instead.
+          # uses the app token below instead.
           persist-credentials: false
+      - name: Create app token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          # the semantic-release-innoactive GitHub App; the token is scoped to this repository
+          client-id: Iv23li5KyqO4ET5ySTXk
+          private-key: ${{ secrets.SEMANTIC_RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
       - name: Semantic Release
         uses: cycjimmy/semantic-release-action@v6
         with:
@@ -27,6 +37,6 @@ jobs:
             @semantic-release/exec
             @semantic-release/git
         env:
-          # Repo-scoped token whose identity bypasses PR protection on main, so the
-          # @semantic-release/git version-bump commit can be pushed to the protected branch.
-          GITHUB_TOKEN: ${{ secrets.SEMANTIC_RELEASE_GH_TOKEN }}
+          # The app pushes the @semantic-release/git version-bump commit and, unlike
+          # GITHUB_TOKEN, creates a release that triggers `release` workflows.
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
