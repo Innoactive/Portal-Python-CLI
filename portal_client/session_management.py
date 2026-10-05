@@ -15,6 +15,10 @@ from .utils import get_bearer_authorization_header
 logging.getLogger("backoff").addHandler(logging.StreamHandler())
 
 
+# Session management scopes requests to an organization by this header, not a query parameter.
+ORGANIZATION_HEADER = "Portal-Organization-Id"
+
+
 class SessionManagementApiClient:
     """
     Class dealing with the session management API for Virtual Machines
@@ -25,17 +29,25 @@ class SessionManagementApiClient:
             base_url = get_portal_session_management_endpoint()
         self.base_url = base_url
 
+    @staticmethod
+    def _headers(organization_id=None):
+        headers = {"Authorization": get_bearer_authorization_header()}
+        if organization_id is not None:
+            headers[ORGANIZATION_HEADER] = str(organization_id)
+        return headers
+
     @backoff.on_exception(
         backoff.expo, requests.exceptions.ConnectionError, max_time=60
     )
-    def list_vms(self, organization_id):
+    def list_vms(self, organization_id=None):
         """
-        List VMs for an organization
+        List VMs for an organization: the caller's own, or all of them for an
+        organization admin. Without an organization, lists the VMs that belong to
+        none, which needs the global list_virtual_machines permission.
         """
         response = requests.get(
             urljoin(self.base_url, "/VirtualMachines"),
-            headers={"Authorization": get_bearer_authorization_header()},
-            params={"organization_id": organization_id},
+            headers=self._headers(organization_id),
             timeout=30,
         )
 
@@ -54,8 +66,7 @@ class SessionManagementApiClient:
         """
         response = requests.put(
             urljoin(self.base_url, f"/VirtualMachines/{vm_id}/Expiration"),
-            headers={"Authorization": get_bearer_authorization_header()},
-            params={"organization_id": organization_id},
+            headers=self._headers(organization_id),
             json={"time": timespan},
             timeout=30,
         )
@@ -119,7 +130,9 @@ def configure_session_management_parser(parser: argparse.ArgumentParser):
     # vm list command
     vm_list_parser = vm_parser.add_parser("list", help="List VMs for an organization")
     vm_list_parser.add_argument(
-        "--org-id", type=int, required=True, help="Organization ID to list VMs for"
+        "--org-id",
+        type=int,
+        help="Organization ID to list VMs for; omit to list VMs without an organization",
     )
     vm_list_parser.set_defaults(func=list_vms_cli)
 

@@ -1,7 +1,6 @@
 import json
 from io import StringIO
 from unittest.mock import patch
-from urllib.parse import parse_qs, urlparse
 
 import pytest
 import requests
@@ -37,14 +36,27 @@ class TestSessionManagementApiClient:
             result = client.list_vms(organization_id=123)
 
         assert result == expected_response
-        # Check the request URL contains the correct parameters
-        request_url = requests_mock.last_request.url
-        parsed_url = urlparse(request_url)
-        query_params = parse_qs(parsed_url.query)
-        assert query_params["organization_id"][0] == "123"
+        # Session management only reads the organization from this header
+        assert requests_mock.last_request.headers["Portal-Organization-Id"] == "123"
+        assert requests_mock.last_request.qs == {}
         assert (
             requests_mock.last_request.headers["Authorization"] == "Bearer test-token"
         )
+
+    def test_list_vms_without_organization_sends_no_header(self, requests_mock):
+        requests_mock.get(
+            "https://session-management.innoactive.io/VirtualMachines",
+            json={"items": []},
+        )
+
+        client = SessionManagementApiClient()
+        with patch(
+            "portal_client.session_management.get_bearer_authorization_header",
+            return_value="Bearer test-token",
+        ):
+            client.list_vms()
+
+        assert "Portal-Organization-Id" not in requests_mock.last_request.headers
 
     def test_extend_vm_expiration_success(self, requests_mock):
         # Mock the API response
@@ -65,12 +77,9 @@ class TestSessionManagementApiClient:
             )
 
         assert result == expected_response
-        # Check the request URL contains the correct parameters
-        request_url = requests_mock.last_request.url
-        parsed_url = urlparse(request_url)
-        query_params = parse_qs(parsed_url.query)
         request_body = requests_mock.last_request.json()
-        assert query_params["organization_id"][0] == "456"
+        assert requests_mock.last_request.headers["Portal-Organization-Id"] == "456"
+        assert requests_mock.last_request.qs == {}
         assert request_body["time"] == "01:00:00"
         assert (
             requests_mock.last_request.headers["Authorization"] == "Bearer test-token"
