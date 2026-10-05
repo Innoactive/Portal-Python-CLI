@@ -87,7 +87,10 @@ innoactive-portal auth login
 ```
 
 The obtained token is stored in `~/.config/innoactive-portal/credentials.json` (honoring
-`XDG_CONFIG_HOME`). To check your current status or log out again, use:
+`XDG_CONFIG_HOME`). When the server issues a refresh token, it is stored alongside, and an
+expired access token is renewed with it on the next request, so a login lasts as long as
+the refresh token does instead of the access token's lifetime. To check your current
+status or log out again, use:
 
 ```sh
 innoactive-portal auth status
