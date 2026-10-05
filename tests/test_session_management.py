@@ -7,6 +7,9 @@ import requests
 
 from portal_client.session_management import (
     SessionManagementApiClient,
+    create_vm_cli,
+    disable_debug_mode_cli,
+    enable_debug_mode_cli,
     extend_vm_expiration_cli,
     list_vms_cli,
     refresh_regions_cli,
@@ -99,6 +102,133 @@ class TestSessionManagementApiClient:
             result = client.list_vms(organization_id=123)
 
         assert result == expected_response
+
+    @pytest.mark.parametrize(
+        "enabled, action", [(True, "EnableDebugMode"), (False, "DisableDebugMode")]
+    )
+    def test_set_debug_mode(self, requests_mock, enabled, action):
+        expected_response = {"id": "vm-123", "debugModeEnabled": enabled}
+        requests_mock.post(
+            f"https://session-management.innoactive.io/VirtualMachines/vm-123/{action}",
+            json=expected_response,
+        )
+
+        client = SessionManagementApiClient()
+        with patch(
+            "portal_client.session_management.get_bearer_authorization_header",
+            return_value="Bearer test-token",
+        ):
+            result = client.set_debug_mode("vm-123", 456, enabled=enabled)
+
+        assert result == expected_response
+        assert requests_mock.last_request.headers["Portal-Organization-Id"] == "456"
+
+    def test_set_debug_mode_error_response(self, requests_mock):
+        requests_mock.post(
+            "https://session-management.innoactive.io/VirtualMachines/vm-123/EnableDebugMode",
+            text="Forbidden",
+            status_code=403,
+        )
+
+        client = SessionManagementApiClient()
+        with patch(
+            "portal_client.session_management.get_bearer_authorization_header",
+            return_value="Bearer test-token",
+        ):
+            with pytest.raises(requests.HTTPError):
+                client.set_debug_mode("vm-123", 456, enabled=True)
+
+    def test_get_vm(self, requests_mock):
+        requests_mock.get(
+            "https://session-management.innoactive.io/VirtualMachines/vm-123",
+            json={"id": "vm-123", "publicIp": "1.2.3.4"},
+        )
+
+        client = SessionManagementApiClient()
+        with patch(
+            "portal_client.session_management.get_bearer_authorization_header",
+            return_value="Bearer test-token",
+        ):
+            result = client.get_vm("vm-123", 456)
+
+        assert result == {"id": "vm-123", "publicIp": "1.2.3.4"}
+        assert requests_mock.last_request.headers["Portal-Organization-Id"] == "456"
+
+    def test_create_vm(self, requests_mock):
+        requests_mock.post(
+            "https://session-management.innoactive.io/VirtualMachines",
+            json={"id": "vm-123", "state": "Created"},
+            status_code=201,
+        )
+
+        client = SessionManagementApiClient()
+        with patch(
+            "portal_client.session_management.get_bearer_authorization_header",
+            return_value="Bearer test-token",
+        ):
+            result = client.create_vm(
+                organization_id=456,
+                region="eu-central-1",
+                size="l4-small",
+                expiration="01:00:00",
+                image="dev/latest",
+                debug_mode=True,
+            )
+
+        assert result == {"id": "vm-123", "state": "Created"}
+        assert requests_mock.last_request.headers["Portal-Organization-Id"] == "456"
+        assert requests_mock.last_request.json() == {
+            "region": "eu-central-1",
+            "size": "l4-small",
+            "image": "dev/latest",
+            "expirationTimeSpan": "01:00:00",
+            "debugModeEnabled": True,
+        }
+
+    def test_destroy_vm(self, requests_mock):
+        requests_mock.post(
+            "https://session-management.innoactive.io/VirtualMachines/vm-123/Destroy",
+            json={"id": "vm-123", "state": "Started"},
+        )
+
+        client = SessionManagementApiClient()
+        with patch(
+            "portal_client.session_management.get_bearer_authorization_header",
+            return_value="Bearer test-token",
+        ):
+            client.destroy_vm("vm-123", 456)
+
+        assert requests_mock.last_request.method == "POST"
+        assert requests_mock.last_request.headers["Portal-Organization-Id"] == "456"
+
+    def test_list_vm_sizes(self, requests_mock):
+        expected_response = {"vmSizes": [{"name": "l4-small", "isEnabled": True}]}
+        requests_mock.get(
+            "https://session-management.innoactive.io/VirtualMachines/Sizes",
+            json=expected_response,
+        )
+
+        client = SessionManagementApiClient()
+        with patch(
+            "portal_client.session_management.get_bearer_authorization_header",
+            return_value="Bearer test-token",
+        ):
+            assert client.list_vm_sizes() == expected_response
+
+    def test_list_vm_images_passes_only_given_filters(self, requests_mock):
+        requests_mock.get(
+            "https://session-management.innoactive.io/VirtualMachines/Images",
+            json=[],
+        )
+
+        client = SessionManagementApiClient()
+        with patch(
+            "portal_client.session_management.get_bearer_authorization_header",
+            return_value="Bearer test-token",
+        ):
+            client.list_vm_images(instance="dev", gpu_type="l4")
+
+        assert requests_mock.last_request.qs == {"instance": ["dev"], "gputype": ["l4"]}
 
     def test_refresh_regions_success(self, requests_mock):
         # The endpoint returns 200 OK with no content body
@@ -230,3 +360,55 @@ class TestSessionManagementCLI:
         output = mock_stdout.getvalue().strip()
         assert "Successfully triggered a refresh" in output
         assert requests_mock.last_request.method == "POST"
+
+    @pytest.mark.parametrize(
+        "cli, action, enabled",
+        [
+            (enable_debug_mode_cli, "EnableDebugMode", True),
+            (disable_debug_mode_cli, "DisableDebugMode", False),
+        ],
+    )
+    def test_debug_mode_cli(self, requests_mock, cli, action, enabled):
+        expected_response = {"id": "vm-123", "debugModeEnabled": enabled}
+        requests_mock.post(
+            f"https://session-management.innoactive.io/VirtualMachines/vm-123/{action}",
+            json=expected_response,
+        )
+
+        class MockArgs:
+            vm_id = "vm-123"
+            org_id = 456
+
+        with patch(
+            "portal_client.session_management.get_bearer_authorization_header",
+            return_value="Bearer test-token",
+        ):
+            with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
+                cli(MockArgs())
+
+        assert json.loads(mock_stdout.getvalue().strip()) == expected_response
+
+    def test_create_vm_cli(self, requests_mock):
+        requests_mock.post(
+            "https://session-management.innoactive.io/VirtualMachines",
+            json={"id": "vm-123"},
+            status_code=201,
+        )
+
+        class MockArgs:
+            org_id = 456
+            region = "eu-central-1"
+            size = "l4-small"
+            expiration = "01:00:00"
+            image = None
+            debug_mode = False
+
+        with patch(
+            "portal_client.session_management.get_bearer_authorization_header",
+            return_value="Bearer test-token",
+        ):
+            with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
+                create_vm_cli(MockArgs())
+
+        assert json.loads(mock_stdout.getvalue().strip()) == {"id": "vm-123"}
+        assert requests_mock.last_request.json()["image"] is None
