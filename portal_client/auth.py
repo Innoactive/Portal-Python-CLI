@@ -26,6 +26,9 @@ DEFAULT_REDIRECT_URI = "http://localhost:8723/callback"
 # How long to wait for the user to complete the browser login, in seconds.
 LOGIN_TIMEOUT = 300
 
+# Refresh a stored access token this many seconds before it expires.
+REFRESH_MARGIN = 60
+
 # Environment variables used to configure the OAuth client (see resolve_login_settings).
 CLIENT_ID_ENV = "PORTAL_BACKEND_CLIENT_ID"
 CLIENT_SECRET_ENV = "PORTAL_BACKEND_CLIENT_SECRET"
@@ -113,11 +116,73 @@ def clear_credentials() -> bool:
 
 
 def get_stored_access_token() -> str | None:
-    """Return the access token from persisted credentials, if any."""
+    """Return the access token from persisted credentials, if any.
+
+    An expired (or nearly expired) token is first renewed with the stored refresh
+    token, so a single login lasts as long as the refresh token does.
+    """
     credentials = load_credentials()
-    if credentials:
-        return credentials.get("access_token")
-    return None
+    if not credentials:
+        return None
+    expires_at = credentials.get("expires_at")
+    if (
+        expires_at
+        and time.time() >= expires_at - REFRESH_MARGIN
+        and credentials.get("refresh_token")
+        and credentials.get("client_id")
+    ):
+        credentials = refresh_access_token(credentials)
+    return credentials.get("access_token")
+
+
+def _credentials_from_token_response(
+    token_response: dict, endpoint: str, client_id: str, refresh_token: str | None
+) -> dict:
+    """Build the persisted credentials from a token endpoint response."""
+    credentials = {
+        "access_token": token_response["access_token"],
+        "token_type": token_response.get("token_type", "Bearer"),
+        "scope": token_response.get("scope"),
+        "endpoint": endpoint,
+        # Kept so the token can be refreshed without the user logging in again.
+        "client_id": client_id,
+        "refresh_token": token_response.get("refresh_token", refresh_token),
+    }
+    expires_in = token_response.get("expires_in")
+    if expires_in:
+        credentials["expires_at"] = time.time() + expires_in
+    return credentials
+
+
+def refresh_access_token(credentials: dict) -> dict:
+    """Trade the stored refresh token for a new access token and persist it."""
+    client_id = credentials["client_id"]
+    # A confidential client's secret is never stored; it comes from env or config.
+    client_secret = resolve_login_settings()["client_secret"]
+    response = requests.post(
+        urljoin(credentials["endpoint"], TOKEN_PATH),
+        data={
+            "grant_type": "refresh_token",
+            "refresh_token": credentials["refresh_token"],
+            "client_id": client_id,
+        },
+        auth=(client_id, client_secret) if client_secret else None,
+        timeout=30,
+    )
+
+    if not response.ok:
+        raise Exception(
+            "Refreshing the access token failed (HTTP {}): {}. Run "
+            "'innoactive-portal auth login' again.".format(
+                response.status_code, response.text
+            )
+        )
+
+    refreshed = _credentials_from_token_response(
+        response.json(), credentials["endpoint"], client_id, credentials["refresh_token"]
+    )
+    save_credentials(refreshed)
+    return refreshed
 
 
 def generate_pkce_pair() -> tuple[str, str]:
@@ -298,17 +363,9 @@ def login(
         client_secret,
     )
 
-    credentials = {
-        "access_token": token_response["access_token"],
-        "token_type": token_response.get("token_type", "Bearer"),
-        "scope": token_response.get("scope"),
-        "endpoint": endpoint,
-    }
-    expires_in = token_response.get("expires_in")
-    if expires_in:
-        credentials["expires_at"] = time.time() + expires_in
-
-    save_credentials(credentials)
+    save_credentials(
+        _credentials_from_token_response(token_response, endpoint, client_id, None)
+    )
     return token_response
 
 
@@ -362,7 +419,9 @@ def status_cli(args):
     expires_at = credentials.get("expires_at")
     if expires_at:
         remaining = expires_at - time.time()
-        if remaining <= 0:
+        if remaining <= 0 and credentials.get("refresh_token"):
+            print("Access token has expired, it is refreshed on the next request.")
+        elif remaining <= 0:
             print("Access token has expired, run 'innoactive-portal auth login' again.")
         else:
             print("Access token expires in {} minutes.".format(int(remaining // 60)))

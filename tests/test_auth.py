@@ -1,4 +1,5 @@
 import hashlib
+import time
 from base64 import urlsafe_b64encode
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
@@ -263,6 +264,97 @@ class TestLoginFlow:
                     endpoint="https://api.innoactive.io",
                     open_browser=False,
                 )
+
+
+class TestTokenRefresh:
+    def test_login_keeps_refresh_token_and_client(self, requests_mock, isolated_config):
+        requests_mock.post(
+            "https://api.innoactive.io/oauth/token/",
+            json={"access_token": "a1", "refresh_token": "r1", "expires_in": 3600},
+        )
+
+        with patch(
+            "portal_client.auth._wait_for_callback",
+            return_value={"code": "c", "state": "s", "error": None},
+        ), patch("portal_client.auth.secrets.token_urlsafe", side_effect=["v", "s"]):
+            auth.login(
+                client_id="my-client",
+                endpoint="https://api.innoactive.io",
+                open_browser=False,
+            )
+
+        stored = auth.load_credentials()
+        assert stored["refresh_token"] == "r1"
+        assert stored["client_id"] == "my-client"
+
+    def test_valid_token_is_not_refreshed(self, requests_mock, isolated_config):
+        auth.save_credentials(
+            {
+                "access_token": "a1",
+                "refresh_token": "r1",
+                "client_id": "my-client",
+                "endpoint": "https://api.innoactive.io",
+                "expires_at": time.time() + 3600,
+            }
+        )
+
+        assert auth.get_stored_access_token() == "a1"
+        assert not requests_mock.called
+
+    def test_expired_token_is_refreshed_and_persisted(
+        self, requests_mock, isolated_config, monkeypatch
+    ):
+        monkeypatch.delenv("PORTAL_BACKEND_CLIENT_SECRET", raising=False)
+        requests_mock.post(
+            "https://api.innoactive.io/oauth/token/",
+            json={"access_token": "a2", "refresh_token": "r2", "expires_in": 3600},
+        )
+        auth.save_credentials(
+            {
+                "access_token": "a1",
+                "refresh_token": "r1",
+                "client_id": "my-client",
+                "endpoint": "https://api.innoactive.io",
+                "expires_at": time.time() - 1,
+            }
+        )
+
+        assert auth.get_stored_access_token() == "a2"
+        body = parse_qs(requests_mock.last_request.text)
+        assert body == {
+            "grant_type": ["refresh_token"],
+            "refresh_token": ["r1"],
+            "client_id": ["my-client"],
+        }
+        # The rotated refresh token replaces the used one.
+        assert auth.load_credentials()["refresh_token"] == "r2"
+
+    def test_expired_token_without_refresh_token_is_returned_as_is(
+        self, requests_mock, isolated_config
+    ):
+        auth.save_credentials({"access_token": "a1", "expires_at": time.time() - 1})
+
+        assert auth.get_stored_access_token() == "a1"
+        assert not requests_mock.called
+
+    def test_failed_refresh_asks_for_login(self, requests_mock, isolated_config):
+        requests_mock.post(
+            "https://api.innoactive.io/oauth/token/",
+            json={"error": "invalid_grant"},
+            status_code=400,
+        )
+        auth.save_credentials(
+            {
+                "access_token": "a1",
+                "refresh_token": "r1",
+                "client_id": "my-client",
+                "endpoint": "https://api.innoactive.io",
+                "expires_at": time.time() - 1,
+            }
+        )
+
+        with pytest.raises(Exception, match="auth login"):
+            auth.get_stored_access_token()
 
 
 class TestBearerHeaderFallback:

@@ -87,7 +87,10 @@ innoactive-portal auth login
 ```
 
 The obtained token is stored in `~/.config/innoactive-portal/credentials.json` (honoring
-`XDG_CONFIG_HOME`). To check your current status or log out again, use:
+`XDG_CONFIG_HOME`). When the server issues a refresh token, it is stored alongside, and an
+expired access token is renewed with it on the next request, so a login lasts as long as
+the refresh token does instead of the access token's lifetime. To check your current
+status or log out again, use:
 
 ```sh
 innoactive-portal auth status
@@ -144,6 +147,35 @@ innoactive-portal applications v2 upload-build \
 ```
 
 You can run `innoactive-portal applications v2 upload-build --help` to get more information on available parameters.
+
+### Managing virtual machines
+
+Virtual machines live in session management, set `PORTAL_SESSION_MANAGEMENT_ENDPOINT` for
+an instance other than production (see [Configuration](#configuration)). A VM that belongs
+to an organization is only found when you pass that organization's ID with `--org-id`.
+Without org admin rights, you only see your own VMs.
+
+```sh
+# List your VMs in organization 1 (omit --org-id for the VMs without an organization)
+innoactive-portal vms list --org-id 1
+
+# Find a size and an image for a region
+innoactive-portal vms sizes
+innoactive-portal vms images --instance dev --gpu-type t4
+
+# Create a VM for yourself (it starts right away) that is destroyed again after an hour,
+# with debug mode on so its debug ports (RDP, WinRM) are open
+innoactive-portal vms create --org-id 1 --region eu-central-1 --size t4.small   --image dev/latest --expiration 01:00:00 --debug-mode
+
+# Poll its state and public IP, toggle debug mode, destroy it
+innoactive-portal vms get <vm-id> --org-id 1
+innoactive-portal vms disable-debug-mode <vm-id> --org-id 1
+innoactive-portal vms enable-debug-mode <vm-id> --org-id 1
+innoactive-portal vms destroy <vm-id> --org-id 1
+```
+
+Debug mode requires the `can_debug` permission. Session management has no endpoint to
+start a stopped VM; a VM starts when it is created or when a session is placed on it.
 
 ### Refreshing region resources
 
