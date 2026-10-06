@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 import requests
 
+from portal_client import parser
 from portal_client.session_management import (
     SessionManagementApiClient,
     create_vm_cli,
@@ -412,3 +413,226 @@ class TestSessionManagementCLI:
 
         assert json.loads(mock_stdout.getvalue().strip()) == {"id": "vm-123"}
         assert requests_mock.last_request.json()["image"] is None
+
+
+SESSIONS_URL = "https://session-management.innoactive.io/v2/Sessions"
+DEVICES_URL = "https://session-management.innoactive.io/Devices"
+SESSION_ID = "5d0c1a3e-6f5b-4c1e-9a3b-2f9d8e7c6b5a"
+DEVICE_ID = "0b6e2f4a-1c3d-4e5f-8a9b-7c6d5e4f3a2b"
+
+
+class TestSessions:
+    @pytest.fixture(autouse=True)
+    def bearer_token(self):
+        with patch(
+            "portal_client.session_management.get_bearer_authorization_header",
+            return_value="Bearer test-token",
+        ):
+            yield
+
+    def test_list_sessions_includes_running_and_failed_ones(self, requests_mock):
+        expected_response = {"items": [{"id": SESSION_ID}], "totalResults": 1}
+        requests_mock.get(SESSIONS_URL, json=expected_response)
+
+        result = SessionManagementApiClient().list_sessions(
+            organization_id=123,
+            user_id="7",
+            app_id="42",
+            render_type="RemoteRendered",
+            created_after="2026-10-01T00:00:00Z",
+            page=2,
+            page_size=5,
+        )
+
+        assert result == expected_response
+        assert requests_mock.last_request.headers["Portal-Organization-Id"] == "123"
+        # Session management leaves out running and failed sessions without includeFailed
+        assert requests_mock.last_request.qs == {
+            "useridentifier": ["7"],
+            "appid": ["42"],
+            "rendertype": ["remoterendered"],
+            "from": ["2026-10-01t00:00:00z"],
+            "includefailed": ["true"],
+            "page": ["2"],
+            "pagesize": ["5"],
+        }
+
+    def test_list_sessions_completed_only(self, requests_mock):
+        requests_mock.get(SESSIONS_URL, json={"items": []})
+
+        SessionManagementApiClient().list_sessions(completed_only=True)
+
+        assert requests_mock.last_request.qs == {}
+        assert "Portal-Organization-Id" not in requests_mock.last_request.headers
+
+    def test_get_session(self, requests_mock):
+        requests_mock.get(
+            f"{SESSIONS_URL}/{SESSION_ID}", json={"id": SESSION_ID, "state": "Running"}
+        )
+
+        result = SessionManagementApiClient().get_session(SESSION_ID, 123)
+
+        assert result == {"id": SESSION_ID, "state": "Running"}
+        assert requests_mock.last_request.headers["Portal-Organization-Id"] == "123"
+
+    def test_request_session_from_given_device(self, requests_mock):
+        requests_mock.post(SESSIONS_URL, json={"id": SESSION_ID})
+
+        result = SessionManagementApiClient().request_session(
+            organization_id=123,
+            app_build_id=42,
+            device_identifier="browser-1",
+            device_id=DEVICE_ID,
+            region="eu-central-1",
+            vm_id="vm-1",
+            extra_launch_arguments="--my-arg",
+            language="de",
+            xr_encryption=False,
+            require_xr_gateway=True,
+        )
+
+        assert result == {"id": SESSION_ID}
+        request = requests_mock.last_request
+        assert request.headers["Portal-Organization-Id"] == "123"
+        assert request.headers["Portal-Device-Id"] == DEVICE_ID
+        assert request.json() == {
+            "appBuildId": "42",
+            "deviceIdentifier": "browser-1",
+            "renderRegion": "eu-central-1",
+            "virtualMachineId": "vm-1",
+            "extraLaunchArguments": "--my-arg",
+            "languageIsoCode": "de",
+            "xrEncryption": False,
+            "requireXRGateway": True,
+        }
+
+    def test_request_session_defaults_to_the_device_it_is_for(self, requests_mock):
+        requests_mock.get(DEVICES_URL, json={"items": [{"id": DEVICE_ID}]})
+        requests_mock.post(SESSIONS_URL, json={"id": SESSION_ID})
+
+        SessionManagementApiClient().request_session(
+            organization_id=123, app_build_id="42", device_identifier="browser-1"
+        )
+
+        device_lookup, session_request = requests_mock.request_history
+        assert device_lookup.qs == {"identifier": ["browser-1"]}
+        assert session_request.headers["Portal-Device-Id"] == DEVICE_ID
+        assert session_request.json()["xrEncryption"] is None
+
+    def test_request_session_without_access_to_the_device(self, requests_mock):
+        requests_mock.get(DEVICES_URL, text="Forbidden", status_code=403)
+        requests_mock.post(SESSIONS_URL, json={"id": SESSION_ID})
+
+        with pytest.raises(requests.HTTPError):
+            SessionManagementApiClient().request_session(
+                organization_id=123, app_build_id="42", device_identifier="browser-1"
+            )
+
+        assert requests_mock.call_count == 1
+
+    def test_terminate_session_from_given_device(self, requests_mock):
+        requests_mock.post(
+            f"{SESSIONS_URL}/{SESSION_ID}/Terminate",
+            json={"id": SESSION_ID, "state": "Terminated"},
+        )
+
+        result = SessionManagementApiClient().terminate_session(
+            SESSION_ID, organization_id=123, device_id=DEVICE_ID
+        )
+
+        assert result == {"id": SESSION_ID, "state": "Terminated"}
+        assert requests_mock.call_count == 1
+        assert requests_mock.last_request.headers["Portal-Device-Id"] == DEVICE_ID
+        assert requests_mock.last_request.headers["Portal-Organization-Id"] == "123"
+
+    def test_terminate_session_defaults_to_the_device_it_is_for(self, requests_mock):
+        requests_mock.get(
+            f"{SESSIONS_URL}/{SESSION_ID}",
+            json={"id": SESSION_ID, "deviceIdentifier": "browser-1"},
+        )
+        requests_mock.get(DEVICES_URL, json={"items": [{"id": DEVICE_ID}]})
+        requests_mock.post(
+            f"{SESSIONS_URL}/{SESSION_ID}/Terminate",
+            json={"id": SESSION_ID, "state": "Terminated"},
+        )
+
+        SessionManagementApiClient().terminate_session(SESSION_ID)
+
+        _, device_lookup, termination = requests_mock.request_history
+        assert device_lookup.qs == {"identifier": ["browser-1"]}
+        assert termination.headers["Portal-Device-Id"] == DEVICE_ID
+
+
+class TestSessionsCLI:
+    @pytest.fixture(autouse=True)
+    def bearer_token(self):
+        with patch(
+            "portal_client.session_management.get_bearer_authorization_header",
+            return_value="Bearer test-token",
+        ):
+            yield
+
+    def run(self, *argv):
+        args = parser.parse_args(["sessions", *argv])
+        with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
+            args.func(args)
+        return json.loads(mock_stdout.getvalue())
+
+    def test_list(self, requests_mock):
+        requests_mock.get(SESSIONS_URL, json={"items": []})
+
+        assert self.run("list", "--org-id", "1", "--user-id", "7") == {"items": []}
+        assert requests_mock.last_request.headers["Portal-Organization-Id"] == "1"
+        assert requests_mock.last_request.qs == {
+            "useridentifier": ["7"],
+            "includefailed": ["true"],
+            "page": ["1"],
+            "pagesize": ["10"],
+        }
+
+    def test_get(self, requests_mock):
+        requests_mock.get(f"{SESSIONS_URL}/{SESSION_ID}", json={"id": SESSION_ID})
+
+        assert self.run("get", SESSION_ID) == {"id": SESSION_ID}
+
+    def test_request(self, requests_mock):
+        requests_mock.post(SESSIONS_URL, json={"id": SESSION_ID})
+
+        output = self.run(
+            "request",
+            "--org-id",
+            "1",
+            "--app-build-id",
+            "42",
+            "--device-identifier",
+            "browser-1",
+            "--device-id",
+            DEVICE_ID,
+            "--extra-launch-args=--my-arg",
+            "--no-xr-encryption",
+        )
+
+        assert output == {"id": SESSION_ID}
+        request = requests_mock.last_request
+        assert request.headers["Portal-Device-Id"] == DEVICE_ID
+        assert request.json() == {
+            "appBuildId": "42",
+            "deviceIdentifier": "browser-1",
+            "renderRegion": None,
+            "virtualMachineId": None,
+            "extraLaunchArguments": "--my-arg",
+            "languageIsoCode": None,
+            "xrEncryption": False,
+            "requireXRGateway": False,
+        }
+
+    def test_terminate(self, requests_mock):
+        requests_mock.post(
+            f"{SESSIONS_URL}/{SESSION_ID}/Terminate",
+            json={"id": SESSION_ID, "state": "Terminated"},
+        )
+
+        output = self.run("terminate", SESSION_ID, "--device-id", DEVICE_ID)
+
+        assert output == {"id": SESSION_ID, "state": "Terminated"}
+        assert requests_mock.last_request.headers["Portal-Device-Id"] == DEVICE_ID

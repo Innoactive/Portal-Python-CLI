@@ -14,20 +14,22 @@ pip install portal-client@git+https://github.com/Innoactive/Portal-Python-CLI.gi
 
 ```bash
 $ innoactive-portal --help
-usage: innoactive-portal [-h] {auth,applications,upload-app,upload-client,users,groups,branding,organizations,vms} ...
+usage: innoactive-portal [-h] {auth,applications,upload-app,upload-client,users,groups,branding,organizations,vms,sessions,regions} ...
 
 positional arguments:
-  {auth,applications,upload-app,upload-client,users,groups,branding,organizations,vms}
+  {auth,applications,upload-app,upload-client,users,groups,branding,organizations,vms,sessions,regions}
                         Help on specific commands
     auth                Authenticate against Portal (interactive browser login)
-    applications        Manage application versions on Portal
-    upload-app          Upload of applications / application versions to Portal
+    applications        Manage application builds (versions) on Portal
+    upload-app          Upload of application builds to Portal
     upload-client       Upload of client applications to Portal
     users               Manage user accounts on Portal
     groups              Manage user groups on Portal
     branding            Manage branding on Portal
     organizations       Manage organizations on Portal
     vms                 Manage Virtual Machines
+    sessions            Manage sessions
+    regions             Manage regions via session management
 
 options:
   -h, --help            show this help message and exit
@@ -176,6 +178,39 @@ innoactive-portal vms destroy <vm-id> --org-id 1
 
 Debug mode requires the `can_debug` permission. Session management has no endpoint to
 start a stopped VM; a VM starts when it is created or when a session is placed on it.
+
+### Managing sessions
+
+Sessions also live in session management (see [Configuration](#configuration)). A session
+runs an application build for a device, e.g. your browser streaming a cloud-rendered
+application. Session management decides from the build's platform and the device whether
+the session is cloud rendered.
+
+```sh
+# List the sessions in organization 1, newest first, including running and failed ones
+innoactive-portal sessions list --org-id 1
+# Without org admin rights, list your own sessions by your Portal user ID
+innoactive-portal sessions list --user-id 7
+# Only the sessions that ran and ended without failing
+innoactive-portal sessions list --org-id 1 --completed-only
+
+# Request a session running application build 42 for a device, on a VM of yours
+# (omit --vm-id to have one provisioned, in --region or in a region picked for you)
+innoactive-portal sessions request --org-id 1 --app-build-id 42 \
+  --device-identifier <device-identifier> --vm-id <vm-id>
+
+# Poll its state, terminate it
+innoactive-portal sessions get <session-id> --org-id 1
+innoactive-portal sessions terminate <session-id> --org-id 1
+```
+
+The device must be known to session management, which it is once a Portal client (e.g.
+Portal in your browser) has connected from it. Session management records which device a
+session was requested and terminated from; both default to the device the session is
+for, which the CLI looks up by its identifier. That lookup only finds a device while it
+is connected with you signed in on it, e.g. while Portal is open in your browser.
+Otherwise, pass session management's ID of a device of yours with `--device-id`. You can
+only terminate your own running session.
 
 ### Refreshing region resources
 
