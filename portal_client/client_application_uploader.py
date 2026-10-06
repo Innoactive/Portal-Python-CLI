@@ -45,7 +45,12 @@ class ClientApplicationApiClient:
         backoff.expo, requests.exceptions.ConnectionError, max_time=60
     )
     def retrieve_client_application_version(self, slug, version):
-        return requests.get(urljoin(self.base_url, f"{slug}/versions/{version}/"))
+        # authenticate: reads of superseded versions are not available anonymously, so without credentials this
+        # would report an already existing version as missing
+        return requests.get(
+            urljoin(self.base_url, f"{slug}/versions/{version}/"),
+            headers={"Authorization": get_authorization_header()},
+        )
 
     @backoff.on_exception(
         backoff.expo, requests.exceptions.ConnectionError, max_time=60
