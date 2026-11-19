@@ -179,14 +179,20 @@ export PORTAL_SESSION_MANAGEMENT_ENDPOINT=https://my-session-mgmt.example.org
 You will need the application's identity from Portal as well as the application archive (.zip or .apk) to be uploaded.
 
 ```sh
-innoactive-portal applications v2 upload-build \
-./my-new-app-version.zip \ # application archive to be uploaded
---application-id 8feaa9c8-5aaf-4d49-8eef-0c20e8c73d9c \ # the id of the application this version belongs to
---version 1.0.2 \ # version number of the new version
---xr-platform win-non-vr \ # the XR platform this version is for, can be specified multiple times for multiple platforms
---launch-args='--my-custom-arg' \ # custom launch arguments for the application
---changelog='This version contains some bugfixes and new features' # changelog for the new version
+innoactive-portal applications v2 upload-build ./my-new-app-version.zip \
+  --application-id 8feaa9c8-5aaf-4d49-8eef-0c20e8c73d9c \
+  --version 1.0.2 \
+  --xr-platform win-non-vr \
+  --launch-args='--my-custom-arg' \
+  --changelog='This version contains some bugfixes and new features'
 ```
+
+- `./my-new-app-version.zip`: the application archive to upload
+- `--application-id`: the ID of the application the build belongs to
+- `--version`: the build's version number
+- `--xr-platform`: the XR platform the build is for; repeat it for several platforms
+- `--launch-args`: custom launch arguments for the application
+- `--changelog`: the build's changelog
 
 You can run `innoactive-portal applications v2 upload-build --help` to get more information on available parameters.
 
