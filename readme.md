@@ -127,7 +127,7 @@ allow:
 | Permission | Allows | Command |
 | --- | --- | --- |
 | Upload builds | uploading new builds of the application | `applications v2 upload-build` |
-| Publish builds | pointing the application's launch configurations at a build | `applications v2 update-launch-configuration` |
+| Publish builds | putting builds into use: pointing the application's launch configurations at a build, or letting an upload switch them over | `applications v2 update-launch-configuration`, `applications v2 upload-build --set-as-current-version` |
 | Download builds | downloading the application's build archives | `applications v2 builds download` |
 
 Every token can also read its application (`applications v2 get <application-id>`), the
@@ -199,27 +199,34 @@ You can run `innoactive-portal applications v2 upload-build --help` to get more 
 ### Uploading and publishing from a CI/CD pipeline
 
 With an [application access token](#application-access-tokens-for-cicd-pipelines-and-integrations)
-in `PORTAL_BACKEND_ACCESS_TOKEN`, a pipeline uploads a build and then makes it live:
+in `PORTAL_BACKEND_ACCESS_TOKEN`, a pipeline uploads a build. The build goes live only if the
+pipeline asks for it with `--set-as-current-version`, which needs "Publish builds":
 
 ```sh
-# Needs "Upload builds". Prints the new build as JSON, including its id.
+# Needs "Upload builds" and "Publish builds". Prints the new build as JSON, including its id.
 innoactive-portal applications v2 upload-build ./build.zip \
   --application-id "$APPLICATION_ID" \
   --version "$VERSION" \
   --xr-platform win-non-vr \
-  --executable-path MyApp.exe
+  --executable-path MyApp.exe \
+  --set-as-current-version
+```
 
+With `--set-as-current-version`, launch configurations of the build's XR platforms that don't
+have a build yet get it right away. The others switch to it once Portal has scanned and
+validated it, so a broken or blocked build never replaces a working one.
+
+Without the flag, Portal stores a build uploaded with a token but doesn't put it into use. (A
+build a person uploads with the CLI does go into use; `--no-set-as-current-version` prevents
+that.) A token with "Upload builds" only can't put builds into use, and its builds can only
+name XR platforms the application already has launch configurations for.
+
+To put a build into use later, for example after a test stage:
+
+```sh
 # Needs "Publish builds". Points the application's win-non-vr launch configuration at the build.
 innoactive-portal applications v2 update-launch-configuration "$APPLICATION_ID" win-non-vr "$BUILD_ID"
 ```
-
-What the upload does depends on the token's permissions:
-
-- **Upload builds only:** Portal stores the build but doesn't put it into use. The build can
-  only name XR platforms the application already has launch configurations for.
-- **Upload builds and Publish builds:** the build goes live the same way as an upload by a
-  person. Launch configurations that don't have a build yet get it right away. The others
-  switch to it once Portal has scanned and validated it.
 
 `update-launch-configuration` switches a launch configuration straight away, even before
 Portal has validated the build. Use `applications v2 builds get <build-id>` to check a
@@ -232,17 +239,17 @@ A GitHub Actions step with the token stored as the repository secret `PORTAL_ACC
 - uses: actions/setup-python@v7
   with:
     python-version: "3.12"
-- name: Upload and publish the build on Portal
+- name: Upload the build to Portal and put it into use once it is validated
   env:
     PORTAL_BACKEND_ACCESS_TOKEN: ${{ secrets.PORTAL_ACCESS_TOKEN }}
     APPLICATION_ID: 8feaa9c8-5aaf-4d49-8eef-0c20e8c73d9c
     VERSION: 1.0.2
   run: |
     pip install portal-client@git+https://github.com/Innoactive/Portal-Python-CLI.git@main
-    BUILD_ID=$(innoactive-portal applications v2 upload-build ./build.zip \
+    innoactive-portal applications v2 upload-build ./build.zip \
       --application-id "$APPLICATION_ID" --version "$VERSION" \
-      --xr-platform win-non-vr --executable-path MyApp.exe | jq -r .id)
-    innoactive-portal applications v2 update-launch-configuration "$APPLICATION_ID" win-non-vr "$BUILD_ID"
+      --xr-platform win-non-vr --executable-path MyApp.exe \
+      --set-as-current-version
 ```
 
 ### Downloading a build
