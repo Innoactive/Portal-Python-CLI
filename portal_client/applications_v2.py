@@ -1,5 +1,5 @@
 import json
-from argparse import ArgumentParser
+from argparse import ArgumentParser, BooleanOptionalAction
 import os
 import tempfile
 from tqdm import tqdm
@@ -149,6 +149,9 @@ def upload_application_build(
 def upload_application_build_cli(args):
     build_data = vars(args)
     del build_data["func"]
+    if build_data.get("set_as_current_version") is None:
+        # neither flag given: leave it to Portal (see the option's help)
+        build_data.pop("set_as_current_version", None)
     application_build_upload_response = upload_application_build(**build_data)
     print(json.dumps(application_build_upload_response))
 
@@ -303,6 +306,20 @@ def _configure_applications_v2_builds_upload_subparser(
         help="Changelog for the build. Supports markdown",
         dest="changelog",
         default="",
+    )
+
+    applications_upload_build_parser.add_argument(
+        "--set-as-current-version",
+        help=(
+            "Put the build into use: launch configurations of its XR platforms that have no build get it right "
+            "away, and the others switch to it once Portal has scanned and validated it. With an application access "
+            "token this needs the 'Publish builds' permission. --no-set-as-current-version saves the build without "
+            "putting it into use. Without either, a build uploaded with an application access token is not put into "
+            "use, and one uploaded by a person is."
+        ),
+        action=BooleanOptionalAction,
+        default=None,
+        dest="set_as_current_version",
     )
 
     applications_upload_build_parser.add_argument(
