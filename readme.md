@@ -99,7 +99,7 @@ innoactive-portal auth status
 innoactive-portal auth logout
 ```
 
-Alternatively, you can provide credentials as environment variables. You can use either a Bearer token issued by Portal or a user's username (email address) and password combination. These always take precedence over a token stored via `auth login`.
+Alternatively, you can provide credentials as environment variables. You can use either a Bearer token issued by Portal, such as an [application access token](#application-access-tokens-for-cicd-pipelines-and-integrations), or a user's username (email address) and password combination. These always take precedence over a token stored via `auth login`.
 
 To use a bearer token, set:
 
@@ -113,6 +113,46 @@ To use a user's credentials use:
 export PORTAL_BACKEND_USERNAME=jane.doe@example.org
 export PORTAL_BACKEND_PASSWORD=supersecure-password
 ```
+
+Portal refuses passwords for accounts that use or require two-factor authentication. Use an
+application access token for pipelines instead.
+
+### Application access tokens for CI/CD pipelines and integrations
+
+A CI/CD pipeline or another machine that works with one application should use an
+**application access token**, not a person's credentials. A token belongs to one application
+in one organization, not to the person who created it. It can only do what its permissions
+allow:
+
+| Permission | Allows | Command |
+| --- | --- | --- |
+| Upload builds | uploading new builds of the application | `applications v2 upload-build` |
+| Publish builds | putting builds into use: pointing the application's launch configurations at a build, or letting an upload switch them over | `applications v2 update-launch-configuration`, `applications v2 upload-build --set-as-current-version` |
+| Download builds | downloading the application's build archives | `applications v2 builds download` |
+
+Every token can also read its application (`applications v2 get <application-id>`), the
+application's builds (`applications v2 builds get <build-id>`) and its launch configurations.
+It can't do anything else: it can't list applications, edit, delete or share anything, or
+reach another application.
+
+To create a token, open the application in Portal and go to **Access Control** →
+**Access Tokens** → **Create access token**. Choose a name, the permissions and an expiry.
+Upload and publish tokens can only be created in the organization that owns the application.
+An organization the application is shared with can create download tokens. Portal shows the
+token (`ipat_…`) only once, so store it in your pipeline's secret store straight away. You can
+revoke tokens on the same page. To rotate a token, create a new one, switch your pipeline over
+to it, then revoke the old one.
+
+The CLI sends the token like any other bearer token:
+
+```sh
+export PORTAL_BACKEND_ACCESS_TOKEN=ipat_...
+```
+
+You don't need to name an organization: the token acts in the organization it was created
+in, and a request that names another organization (`Portal-Organization-Id`) is refused.
+Portal answers `401 Unauthorized` for an expired or revoked token, and `403 Forbidden` for a
+command the token has no permission for.
 
 ## Configuration
 
@@ -139,16 +179,91 @@ export PORTAL_SESSION_MANAGEMENT_ENDPOINT=https://my-session-mgmt.example.org
 You will need the application's identity from Portal as well as the application archive (.zip or .apk) to be uploaded.
 
 ```sh
-innoactive-portal applications v2 upload-build \
-./my-new-app-version.zip \ # application archive to be uploaded
---application-id 8feaa9c8-5aaf-4d49-8eef-0c20e8c73d9c \ # the id of the application this version belongs to
---version 1.0.2 \ # version number of the new version
---xr-platform win-non-vr \ # the XR platform this version is for, can be specified multiple times for multiple platforms
---launch-args='--my-custom-arg' \ # custom launch arguments for the application
---changelog='This version contains some bugfixes and new features' # changelog for the new version
+innoactive-portal applications v2 upload-build ./my-new-app-version.zip \
+  --application-id 8feaa9c8-5aaf-4d49-8eef-0c20e8c73d9c \
+  --version 1.0.2 \
+  --xr-platform win-non-vr \
+  --launch-args='--my-custom-arg' \
+  --changelog='This version contains some bugfixes and new features'
 ```
 
+- `./my-new-app-version.zip`: the application archive to upload
+- `--application-id`: the ID of the application the build belongs to
+- `--version`: the build's version number
+- `--xr-platform`: the XR platform the build is for; repeat it for several platforms
+- `--launch-args`: custom launch arguments for the application
+- `--changelog`: the build's changelog
+
 You can run `innoactive-portal applications v2 upload-build --help` to get more information on available parameters.
+
+### Uploading and publishing from a CI/CD pipeline
+
+With an [application access token](#application-access-tokens-for-cicd-pipelines-and-integrations)
+in `PORTAL_BACKEND_ACCESS_TOKEN`, a pipeline uploads a build. The build goes live only if the
+pipeline asks for it with `--set-as-current-version`, which needs "Publish builds":
+
+```sh
+# Needs "Upload builds" and "Publish builds". Prints the new build as JSON, including its id.
+innoactive-portal applications v2 upload-build ./build.zip \
+  --application-id "$APPLICATION_ID" \
+  --version "$VERSION" \
+  --xr-platform win-non-vr \
+  --executable-path MyApp.exe \
+  --set-as-current-version
+```
+
+With `--set-as-current-version`, launch configurations of the build's XR platforms that don't
+have a build yet get it right away. The others switch to it once Portal has scanned and
+validated it, so a broken or blocked build never replaces a working one.
+
+Without the flag, Portal stores a build uploaded with a token but doesn't put it into use. (A
+build a person uploads with the CLI does go into use; `--no-set-as-current-version` prevents
+that.) A token with "Upload builds" only can't put builds into use, and its builds can only
+name XR platforms the application already has launch configurations for.
+
+To put a build into use later, for example after a test stage:
+
+```sh
+# Needs "Publish builds". Points the application's win-non-vr launch configuration at the build.
+innoactive-portal applications v2 update-launch-configuration "$APPLICATION_ID" win-non-vr "$BUILD_ID"
+```
+
+`update-launch-configuration` switches a launch configuration straight away, even before
+Portal has validated the build. Use `applications v2 builds get <build-id>` to check a
+build's processing and validation state first.
+
+A GitHub Actions step with the token stored as the repository secret `PORTAL_ACCESS_TOKEN`
+(GitHub's default shell runs with `-e -o pipefail`, so a failed upload fails the step):
+
+```yaml
+- uses: actions/setup-python@v7
+  with:
+    python-version: "3.12"
+- name: Upload the build to Portal and put it into use once it is validated
+  env:
+    PORTAL_BACKEND_ACCESS_TOKEN: ${{ secrets.PORTAL_ACCESS_TOKEN }}
+    APPLICATION_ID: 8feaa9c8-5aaf-4d49-8eef-0c20e8c73d9c
+    VERSION: 1.0.2
+  run: |
+    pip install portal-client@git+https://github.com/Innoactive/Portal-Python-CLI.git@main
+    innoactive-portal applications v2 upload-build ./build.zip \
+      --application-id "$APPLICATION_ID" --version "$VERSION" \
+      --xr-platform win-non-vr --executable-path MyApp.exe \
+      --set-as-current-version
+```
+
+### Downloading a build
+
+With the "Download builds" permission (or as a user who may download the application):
+
+```sh
+innoactive-portal applications v2 builds download <build-id> --filepath ./build.apk
+```
+
+If you leave out `--filepath`, the CLI saves the archive in a temporary directory. Either way,
+it prints the path of the file. Other tools can download the build's `application_archive`
+URL (see `applications v2 builds get <build-id>`) by sending the header
+`Authorization: Bearer <token>`.
 
 ### Managing virtual machines
 
