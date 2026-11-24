@@ -16,15 +16,19 @@ jobs:
           # Full history + tags so semantic-release can determine the next version.
           fetch-depth: 0
           # Must be false: otherwise checkout stores the default GITHUB_TOKEN as a git
-          # auth header and the release push would use it (github-actions[bot], which is
-          # NOT on main's bypass list → GH006). With no persisted credentials, the push
-          # uses the app token below instead.
+          # auth header and the release push would use it. That pushes as
+          # github-actions[bot], which is not on the bypass list of the "Main" ruleset,
+          # so the push is rejected with GH013 ("Changes must be made through a pull
+          # request"). With no persisted credentials, the push uses the app token below.
           persist-credentials: false
       - name: Create app token
         id: app-token
         uses: actions/create-github-app-token@v3
         with:
-          # the semantic-release-innoactive GitHub App; the token is scoped to this repository
+          # The innoactive-semantic-release GitHub App (app ID 5120694); the token is
+          # scoped to this repository. The app must stay on the bypass list of the "Main"
+          # ruleset (Settings → Rules → Rulesets) with "Always allow": main only takes
+          # changes through pull requests, and the version-bump commit is pushed directly.
           client-id: Iv23li5KyqO4ET5ySTXk
           private-key: ${{ secrets.SEMANTIC_RELEASE_APP_PRIVATE_KEY }}
           permission-contents: write
